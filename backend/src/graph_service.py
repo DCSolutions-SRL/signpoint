@@ -29,11 +29,16 @@ def get_users(token, limit=10):
     response.raise_for_status()
     return response.json().get("value", [])
 
-def get_user_groups(token, user_id):
+def get_user_groups(token, user_email):
     headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(f"{GRAPH_API}/users/{user_id}/memberOf", headers=headers)
+    # Usamos userPrincipalName que suele ser el email
+    response = requests.get(f"{GRAPH_API}/users/{user_email}/memberOf", headers=headers)
     response.raise_for_status()
-    groups = [g.get("displayName") for g in response.json().get("value", []) if g.get("@odata.type") == "#microsoft.graph.group"]
+    groups = [
+        g.get("displayName") 
+        for g in response.json().get("value", []) 
+        if g.get("@odata.type") == "#microsoft.graph.group"
+    ]
     return groups
 
 def get_user_by_mail(token, mail):

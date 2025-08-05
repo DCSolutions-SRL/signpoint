@@ -1,7 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from graph_service import get_access_token, get_user_by_mail, get_all_users
+from graph_service import get_access_token, get_user_by_mail, get_all_users, get_user_groups
 import re
 
 app = FastAPI()
@@ -56,3 +56,12 @@ def list_users():
     token = get_access_token()
     users = get_all_users(token)
     return users
+
+@app.get("/user-groups/{mail}")
+async def list_groups(mail: str):
+    token = get_access_token()
+    try:
+        groups = get_user_groups(token, mail)
+        return {"groups": groups}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
