@@ -27,7 +27,7 @@ python -m venv venv
 .\venv\Scripts\activate   # En Windows
 source venv/bin/activate  # En Linux/Mac
 
-pip install fastapi uvicorn requests python-dotenv
+pip install -r requirements.txt
 ```
 
 ## **Ejecutar backend**
@@ -39,7 +39,7 @@ python -m uvicorn app:app --reload --port 8000
 
 ## **Ejecutar frontend**
 ```bash
-cd frontend/src
+cd frontend/
 npm install
 npm run dev
 ```

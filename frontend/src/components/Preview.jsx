@@ -1,10 +1,10 @@
 import React from "react";
+import "../App.css";
 
 export default function Preview({ html }) {
   return (
-    <div
-      style={{ border: "1px solid #ccc", padding: 20, marginTop: 20, fontFamily: "Arial" }}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className="preview-container">
+      <div dangerouslySetInnerHTML={{ __html: html }} />
+    </div>
   );
 }
