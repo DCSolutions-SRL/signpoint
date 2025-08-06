@@ -6,7 +6,7 @@ Este proyecto está dividido en **Backend (FastAPI)** y **Frontend (React)**.
 
 ## **Requisitos previos**
 - [Python 3.9+](https://www.python.org/downloads/)
-- [Node.js + npm](https://nodejs.org/)
+- [Node.js (< v20) + npm](https://nodejs.org/)
 - Git instalado
 - Cuenta en Azure AD (para la API de Microsoft Graph)
 
