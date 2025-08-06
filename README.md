@@ -33,7 +33,9 @@ pip install -r requirements.txt
 ## **Ejecutar backend**
 ```bash
 cd backend/src
-python -m uvicorn app:app --reload --port 8000
+
+prd: python -m uvicorn app:app --reload --port 8000
+tst: python -m uvicorn test:app --reload --port 8000
 ```
 ### El backend se va a encontrar en http://127.0.0.1:8000/docs
 
