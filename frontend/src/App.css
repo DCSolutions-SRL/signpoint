@@ -40,6 +40,12 @@
   box-shadow: 0 2px 4px #ffe5cc;
   transition: background 0.2s;
 }
+
+
+.container-save-btn {
+  display: flex;
+  justify-content: center;
+}
 .save-btn:hover {
   background: #ff944d;
 }
@@ -96,10 +102,14 @@
 }
 
 .rich-toolbar {
+  display: flex;           /* Hace que los hijos estén en fila */
+  flex-wrap: nowrap;       /* Evita que se envuelvan a la siguiente línea */
+  align-items: center;     /* Centra verticalmente los elementos */
+  gap: 8px;                /* Espacio entre botones/selects/input */
+  overflow-x: auto;        /* Permite scroll horizontal si no hay espacio */
   margin-bottom: 12px;
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .rich-btn,
@@ -109,6 +119,11 @@
   border-radius: 6px;
   border: 1.5px solid #ff944d;
   font-size: 16px;
+}
+
+.font-size-input {
+  min-width: 40px;  /* ancho máximo */
+  width: 100px;      /* ancho fijo */
 }
 
 .rich-btn {
@@ -139,4 +154,21 @@
   outline: none;
   color: #000000;
   margin-top: 8px;
+}
+
+.rich-upload-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rich-label {
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }

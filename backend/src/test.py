@@ -51,10 +51,17 @@ def generate_signature(mail: str):
     if not user:
         return {"error": "User not found"}
 
+    # Mapea campos de Graph a tus claves
+    replacements = {
+        "nombre": user.get("displayName", ""),
+        "puesto": user.get("jobTitle", ""),
+        "departamento": user.get("department", ""),
+        "celular": user.get("mobilePhone", "")
+    }
+
     html = signature_template
-    for key in ["displayName", "mail", "jobTitle", "department"]:
-        value = user.get(key) or ""
-        html = re.sub(r"{{" + key + "}}", value, html)
+    for key, value in replacements.items():
+        html = re.sub(r"{{" + key + "}}", value or "", html)
 
     return {"mail": mail, "signature": html}
 
