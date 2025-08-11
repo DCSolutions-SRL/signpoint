@@ -1,3 +1,4 @@
 .env
 venv/
 backend/src/__pycache__
+backend/src/nohup.out
