@@ -53,3 +53,79 @@ npm run dev
 ```
 
 ### El frontend se va a encontrar en http://localhost:5173
+
+
+
+# Certificados y permisos necesario para la comunicacion de backend con Exchange
+
+## Crear App Registration en Azure AD
+Abrir Azure Portal → Azure Active Directory → Registros de aplicaciones → Nuevo registro.
+
+Asignar un nombre descriptivo (ej: ExchangeAutomationApp).
+
+Tipo de cuenta: “Cuentas en este directorio organizativo solamente”.
+
+Guardar y copiar Application (client) ID (AppId) y Directory (tenant) ID.
+
+## Asignar rol en Azure AD
+Azure AD → Roles y administradores.
+
+Buscar y seleccionar Exchange Administrator.
+
+Asignar la App Registration como miembro (tipo: Aplicación).
+
+
+
+## Creamos certificado de validacion en el host del backend
+
+```powershell
+
+PS C:\WINDOWS\system32> New-SelfSignedCertificate -DnsName "ExchangeOnlineAutomationApp" -CertStoreLocation "cert:\CurrentUser\My"
+
+
+   PSParentPath: Microsoft.PowerShell.Security\Certificate::CurrentUser\My
+
+Thumbprint                                Subject
+----------                                -------
+A0B255293AD1EE9DF3FAE915D2F66DE594865757  CN=ExchangeOnlineAutomationApp
+
+PS C:\WINDOWS\system32> Get-ChildItem -Path Cert:\CurrentUser\My
+
+
+   PSParentPath: Microsoft.PowerShell.Security\Certificate::CurrentUser\My
+
+Thumbprint                                Subject
+----------                                -------
+ABCDEFG123456  CN=ExchangeOnlineAutomationApp
+
+
+PS C:\WINDOWS\system32> Export-Certificate -Cert "Cert:\CurrentUser\My\ABCDEFG123456" -FilePath "signpointCert.cer"
+
+
+    Directorio: C:\WINDOWS\system32
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----         13/8/2025     11:47            850 signpointCert.cer
+
+```
+
+## Subir certificado público a Azure
+En tu App Registration → Certificados y secretos → Cargar certificado.
+
+Seleccionar el .cer (clave pública).
+
+Guardar.
+
+## Asignar permisos de aplicación para Exchange
+En App Registration → Permisos de API → Agregar un permiso.
+
+Seleccionar APIs de Microsoft → Exchange → Application permissions.
+
+Elegir al menos:
+
+Copiar
+Editar
+Exchange.ManageAsApp
+Hacer clic en Grant admin consent.

@@ -52,6 +52,8 @@ export default function App() {
     }
   };
 
+  
+
   // 💾 Guardar plantilla en backend
   const saveTemplate = async () => {
     try {
@@ -94,6 +96,7 @@ export default function App() {
 };
 
 
+
   return (
     <div className="app-container">
       <h1 className="app-title">SignPoint</h1>
@@ -114,7 +117,6 @@ export default function App() {
           Guardar Plantilla
         </button>
       </div>
-
 
       <section>
         <h2 className="section-title">Vista previa para usuario real</h2>

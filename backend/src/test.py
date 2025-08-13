@@ -14,6 +14,11 @@ TENANT_ID = os.getenv("TENANT_ID")
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
+APP_ID = os.getenv("APP_ID")
+CERT_PASSWORD = os.getenv("CERT_PASSWORD")
+ORGANIZARTION = os.getenv("ORGANIZATION")
+CERT_ROUTE = os.getenv("CERT_ROUTE")
+
 
 app = FastAPI()
 
@@ -125,26 +130,35 @@ def apply_signature(mail: str = Path(...)):
     # Escapar comillas para PowerShell
     safe_html = html.replace("'", "''")
 
-    user = f"matias.martin"
-    client_id = CLIENT_ID
-    tenant_id = TENANT_ID
-    client_secret = CLIENT_SECRET
-
+    RULE_NAME="matias.martin"
+    
     ps_command = f"""
     Import-Module ExchangeOnlineManagement;
-    Connect-ExchangeOnline -AppId '{client_id}' -Organization '{tenant_id}' -AppSecret '{client_secret}' -ShowProgress $false -ErrorAction Stop;
-    Set-TransportRule -Identity 'matias.martin' -ApplyDisclaimerText '{safe_html}' -ApplyDisclaimerFallbackAction Reject;
+
+    Connect-ExchangeOnline -AppId '{APP_ID}' `
+                        -Organization '{ORGANIZARTION}' `
+                        -CertificateFile '{CERT_ROUTE}' `
+                        -CertificatePassword (ConvertTo-SecureString '{CERT_PASSWORD}' -AsPlainText -Force);
+
+    Set-TransportRule -Identity '{RULE_NAME}' `
+                    -ApplyHtmlDisclaimerText '{safe_html}' `
+                    -ApplyHtmlDisclaimerFallbackAction Wrap
+
     Disconnect-ExchangeOnline -Confirm:$false;
     """
 
     # Ejecutamos PowerShell
     completed = subprocess.run(
-        ["powershell", "-Command", ps_command],
+        ["pwsh", "-Command", ps_command],
         capture_output=True,
         text=True,
-        shell=True
     )
 
+    print("---- STDOUT ----")
+    print(completed.stdout)
+    print("---- STDERR ----")
+    print(completed.stderr)
+    
     if completed.returncode != 0:
         print("Error ejecutando PowerShell:", completed.stderr)
         raise Exception(f"PowerShell error: {completed.stderr}")
