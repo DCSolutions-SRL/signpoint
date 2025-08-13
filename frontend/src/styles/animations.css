@@ -1,0 +1,32 @@
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(.98) }
+  to   { opacity: 1; transform: scale(1) }
+}
+
+@keyframes shimmer {
+  0% { background-position: -450px 0; }
+  100% { background-position: 450px 0; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp .5s var(--ease) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn .4s var(--ease) forwards;
+}
+
+.reveal { opacity: 0; transform: translateY(8px); transition: opacity .5s var(--ease), transform .5s var(--ease); }
+.reveal.is-visible { opacity: 1; transform: translateY(0); }
+
+.skeleton {
+  border-radius: 10px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #ececec 37%, #f3f4f6 63%);
+  background-size: 400px 100%;
+  animation: shimmer 1.2s infinite linear;
+}
