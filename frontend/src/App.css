@@ -127,6 +127,8 @@
 }
 
 .rich-btn {
+  font-family: Arial, sans-serif;
+  font-size: 1em; 
   background: #ff6600;
   color: #fff;
   border: none;
