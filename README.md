@@ -67,12 +67,17 @@ Tipo de cuenta: “Cuentas en este directorio organizativo solamente”.
 
 Guardar y copiar Application (client) ID (AppId) y Directory (tenant) ID.
 
+<img width="1903" height="751" alt="image" src="https://github.com/user-attachments/assets/ec8d34c4-d684-4387-b804-86b2fc788d97" />
+
+
 ## Asignar rol en Azure AD
 Azure AD → Roles y administradores.
 
 Buscar y seleccionar Exchange Administrator.
 
 Asignar la App Registration como miembro (tipo: Aplicación).
+
+<img width="1914" height="575" alt="image" src="https://github.com/user-attachments/assets/f42fb1e6-18f5-4dbb-9f9f-3fc6008da492" />
 
 
 
@@ -128,4 +133,4 @@ Elegir al menos:
 Copiar
 Editar
 Exchange.ManageAsApp
-Hacer clic en Grant admin consent.
+Hacer clic en Grant admin co   <img width="1400" height="863" alt="image" src="https://github.com/user-attachments/assets/88b0a5bd-e635-4792-b4a9-412edf053ad4" />
