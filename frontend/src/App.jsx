@@ -52,6 +52,8 @@ export default function App() {
     }
   };
 
+  
+
   // 💾 Guardar plantilla en backend
   const saveTemplate = async () => {
     try {
@@ -63,15 +65,47 @@ export default function App() {
     }
   };
 
-  const uploadTemplateToCloud = async () => {
-    try {
-      await axios.post(`${API_BASE}/signature/template/upload`, { template });
-      alert("Plantilla subida a la nube para todos los usuarios");
-    } catch (error) {
-      console.error("Error al subir plantilla:", error);
-      alert("Error al subir plantilla a la nube");
+  const saveAndApply = async () => {
+  try {
+    // 1. Guardar plantilla
+    const saveRes = await fetch("http://localhost:8000/signature/template", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ template })
+    });
+
+    if (!saveRes.ok) {
+      throw new Error(`Error guardando plantilla (${saveRes.status})`);
     }
-  };
+
+    // 2. Aplicar firma
+    const mockEmail = mail || "matias.martin@obsba.org.ar";
+    const applyRes = await fetch(`http://localhost:8000/signature/apply/${encodeURIComponent(mockEmail)}`, {
+      method: "POST"
+    });
+
+    if (!applyRes.ok) {
+      throw new Error(`Error aplicando firma (${applyRes.status})`);
+    }
+
+    alert(`Firma aplicada correctamente a ${mockEmail}`);
+  } catch (err) {
+    console.error("Error en saveAndApply:", err);
+    alert(`Error: ${err.message}`);
+  }
+};
+
+const downloadHtml = () => {
+  const blob = new Blob([preview], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "firma_usuario.html";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
 
   return (
@@ -90,11 +124,16 @@ export default function App() {
       </section>
 
       <div className="container-save-btn">
+        <button className="save-btn" onClick={downloadHtml}>
+          Descargar HTML
+        </button>
+      </div>
+
+      <div className="container-save-btn">
         <button className="save-btn" onClick={saveTemplate}>
           Guardar Plantilla
         </button>
       </div>
-
 
       <section>
         <h2 className="section-title">Vista previa para usuario real</h2>
@@ -114,7 +153,7 @@ export default function App() {
 
 
       <div className="container-save-btn">
-        <button className="save-btn" onClick={uploadTemplateToCloud}>
+        <button className="save-btn" onClick={saveAndApply}>
           Subir Plantilla
         </button>
       </div>
