@@ -100,9 +100,8 @@ export default function App() {
       }
 
       // 2. Aplicar firma
-      const mockEmail = mail || "matias.martin@obsba.org.ar";
       const applyRes = await fetch(
-        `http://localhost:8000/signature/apply/${encodeURIComponent(mockEmail)}`,
+        `http://localhost:8000/signature/apply`,
         { method: "POST" }
       );
 
@@ -110,7 +109,7 @@ export default function App() {
         throw new Error(`Error aplicando firma (${applyRes.status})`);
       }
 
-      alert(`Firma aplicada correctamente a ${mockEmail}`);
+      alert(`Cambio de firma aplicado correctamente`);
     } catch (err) {
       console.error("Error en saveAndApply:", err);
       alert(`Error: ${err.message}`);
