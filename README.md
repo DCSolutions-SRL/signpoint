@@ -1,136 +1,132 @@
-# 📌 SignPoint – Instalación y Ejecución
+<h1 align="center">
+  <br>
+  <a href="http://www.dcs.ar"><img src="https://i.imgur.com/GgjNXNl.png" alt="DCSolutions" width="200"></a>
+  <br>
+  SignPoint – Gestor de Firmas Automáticas
+  <br>
+</h1>
 
-Este proyecto está dividido en **Backend (FastAPI)** y **Frontend (React)**.
+<h4 align="center">Sistema para edición, gestión y aplicación automatizada de firmas HTML en Exchange Online vía Microsoft Graph.</h4>
+
+<p align="center">
+  <a href="#caracteristicas">Características</a> •
+  <a href="#estructura">Estructura</a> •
+  <a href="#instalacion">Instalación</a> •
+  <a href="#uso">Uso</a> •
+  <a href="#creditos">Créditos</a>
+</p>
 
 ---
 
-## **Requisitos previos**
+## <a name="caracteristicas"></a>Características
 
-- [Python 3.9+](https://www.python.org/downloads/)
-- [Node.js (&lt; v20) + npm](https://nodejs.org/)
-- Git instalado
-- Cuenta en Azure AD (para la API de Microsoft Graph)
+* **Edición visual de plantillas HTML** con variables dinámicas (nombre, puesto, mail, etc.)
+* **Vista previa en tiempo real** y descarga de la firma generada
+* **Aplicación automática de firmas** a usuarios de Exchange Online
+* **Integración con Microsoft Graph** para obtener datos de usuario y grupos
+* **Gestión de plantillas**: guardar, editar y aplicar desde el frontend
+* **Scripts de automatización** para backend y despliegue
+* **Soporte multiplataforma** (Linux/Mac/Windows)
 
 ---
 
-## **Clonar el repositorio**
+## <a name="estructura"></a>Estructura del Proyecto
+
+```
+signpoint/
+├── backend/
+│   └── src/
+│       ├── app.py                # API principal (FastAPI)
+│       ├── test.py               # API de testing/restricciones
+│       ├── graph_service.py      # Integración con Microsoft Graph
+│       ├── requirements.txt      # Dependencias Python
+│       ├── start.sh, stop.sh     # Scripts de arranque/parada
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx, main.jsx     # App React principal
+│   │   ├── components/           # Componentes UI (Editor, Preview, etc)
+│   │   └── styles/               # Estilos CSS
+│   ├── public/                   # Recursos estáticos
+│   ├── package.json              # Dependencias y scripts npm
+│   └── vite.config.js            # Configuración Vite
+├── scripts/                      # Scripts PowerShell para AD/Exchange
+└── README.md                     # Documentación principal
+```
+
+---
+
+## <a name="instalacion"></a>Instalación
+
+### Requisitos previos
+
+- Python 3.9+
+- Node.js (recomendado v18, no v20+)
+- npm
+- Git
+- Cuenta y permisos en Azure AD (para integración Exchange)
+
+### Clonar el repositorio
 
 ```bash
 git clone https://github.com/DCSolutions-SRL/signpoint.git
 cd signpoint
 ```
 
-## **Instalar dependencias**
+### Backend
 
 ```bash
 cd backend/src
-
 python -m venv venv
-
-.\venv\Scripts\activate   # En Windows
 source venv/bin/activate  # En Linux/Mac
-
+# .\venv\Scripts\activate  # En Windows
 pip install -r requirements.txt
 ```
 
-## **Ejecutar backend**
+### Frontend
 
 ```bash
-cd backend/src
-
-prd: python -m uvicorn app:app --reload --port 8000
-tst: python -m uvicorn test:app --reload --port 8000
+cd ../../frontend
+npm install
 ```
 
-### El backend se va a encontrar en http://localhost:8000/docs
+---
 
-## **Ejecutar frontend**
+## <a name="uso"></a>Uso
+
+### Iniciar backend
 
 ```bash
-cd frontend/
-npm install
+# Modo producción
+python -m uvicorn app:app --reload --port 8000
+# Modo testing/restringido
+python -m uvicorn test:app --reload --port 8000
+
+# Tambien podemos iniciar el servicio con el script interactivo.
+./start.sh     # Seleccionamos tst o prd segundo corresponda.
+
+# Lo detenemos con:
+./stop.sh
+```
+
+Acceso a la API: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Iniciar frontend
+
+```bash
+cd frontend
 npm run dev
 ```
 
-### El frontend se va a encontrar en http://localhost:5173
+Acceso web: [http://localhost:5173](http://localhost:5173)
 
+---
 
+## <a name="creditos"></a>Créditos
 
-# Certificados y permisos necesario para la comunicacion de backend con Exchange
+* [DCSolutions SRL](https://www.dcs.ar)
 
-## Crear App Registration en Azure AD
-Abrir Azure Portal → Azure Active Directory → Registros de aplicaciones → Nuevo registro.
+---
 
-Asignar un nombre descriptivo (ej: ExchangeAutomationApp).
-
-Tipo de cuenta: “Cuentas en este directorio organizativo solamente”.
-
-Guardar y copiar Application (client) ID (AppId) y Directory (tenant) ID.
-
-<img width="1903" height="751" alt="image" src="https://github.com/user-attachments/assets/ec8d34c4-d684-4387-b804-86b2fc788d97" />
-
-
-## Asignar rol en Azure AD
-Azure AD → Roles y administradores.
-
-Buscar y seleccionar Exchange Administrator.
-
-Asignar la App Registration como miembro (tipo: Aplicación).
-
-<img width="1914" height="575" alt="image" src="https://github.com/user-attachments/assets/f42fb1e6-18f5-4dbb-9f9f-3fc6008da492" />
-
-
-
-## Creamos certificado de validacion en el host del backend
-
-```powershell
-
-PS C:\WINDOWS\system32> New-SelfSignedCertificate -DnsName "ExchangeOnlineAutomationApp" -CertStoreLocation "cert:\CurrentUser\My"
-
-
-   PSParentPath: Microsoft.PowerShell.Security\Certificate::CurrentUser\My
-
-Thumbprint                                Subject
-----------                                -------
-A0B255293AD1EE9DF3FAE915D2F66DE594865757  CN=ExchangeOnlineAutomationApp
-
-PS C:\WINDOWS\system32> Get-ChildItem -Path Cert:\CurrentUser\My
-
-
-   PSParentPath: Microsoft.PowerShell.Security\Certificate::CurrentUser\My
-
-Thumbprint                                Subject
-----------                                -------
-ABCDEFG123456  CN=ExchangeOnlineAutomationApp
-
-
-PS C:\WINDOWS\system32> Export-Certificate -Cert "Cert:\CurrentUser\My\ABCDEFG123456" -FilePath "signpointCert.cer"
-
-
-    Directorio: C:\WINDOWS\system32
-
-
-Mode                 LastWriteTime         Length Name
-----                 -------------         ------ ----
--a----         13/8/2025     11:47            850 signpointCert.cer
-
-```
-
-## Subir certificado público a Azure
-En tu App Registration → Certificados y secretos → Cargar certificado.
-
-Seleccionar el .cer (clave pública).
-
-Guardar.
-
-## Asignar permisos de aplicación para Exchange
-En App Registration → Permisos de API → Agregar un permiso.
-
-Seleccionar APIs de Microsoft → Exchange → Application permissions.
-
-Elegir al menos:
-
-Copiar
-Editar
-Exchange.ManageAsApp
-Hacer clic en Grant admin co   <img width="1400" height="863" alt="image" src="https://github.com/user-attachments/assets/88b0a5bd-e635-4792-b4a9-412edf053ad4" />
+<p align="center">
+  © 2025 DCSolutions - Desarrollado para gestión y automatización de firmas en Exchange Online.
+</p>
