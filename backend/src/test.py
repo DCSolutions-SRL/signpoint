@@ -40,17 +40,6 @@ ALLOWED_EMAILS = [
     "martin.matias@obsba.org.ar"
 ]
 
-# Plantilla por defecto
-signature_template = """
-<div style="font-family:Arial;font-size:12px;">
-  <p>Saludos,<br>
-  <strong>{{displayName}}</strong><br>
-  {{jobTitle}}<br>
-  {{department}}<br>
-  <a href="mailto:{{mail}}">{{mail}}</a>
-  </p>
-</div>
-"""
 
 class TemplateBody(BaseModel):
     template: str
@@ -106,31 +95,15 @@ async def list_groups(mail: str):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/signature/apply/{mail}")
-def apply_signature(mail: str = Path(...)):
-    if mail not in ALLOWED_EMAILS:
-        raise HTTPException(status_code=403, detail="Usuario no permitido")
-
-    token = get_access_token()
-    user = get_user_by_mail(token, mail)
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    # Generar HTML con reemplazos
-    replacements = {
-        "nombre": user.get("displayName", ""),
-        "puesto": user.get("jobTitle", ""),
-        "departamento": user.get("department", ""),
-        "celular": user.get("mobilePhone", "")
-    }
+@app.post("/signature/apply")
+def apply_signature():
+    
     html = signature_template
-    for key, value in replacements.items():
-        html = re.sub(r"{{" + key + "}}", value or "", html)
 
     # Escapar comillas para PowerShell
     safe_html = html.replace("'", "''")
 
-    RULE_NAME="matias.martin"
+    RULE_NAME="firma de user martin.matias"
     
     ps_command = f"""
     Import-Module ExchangeOnlineManagement;
@@ -142,7 +115,10 @@ def apply_signature(mail: str = Path(...)):
 
     Set-TransportRule -Identity '{RULE_NAME}' `
                     -ApplyHtmlDisclaimerText '{safe_html}' `
-                    -ApplyHtmlDisclaimerFallbackAction Wrap
+                    -ApplyHtmlDisclaimerFallbackAction Reject
+                    
+    Disable-TransportRule -Identity '{RULE_NAME} -Confirm:$false'
+    Enable-TransportRule -Identity '{RULE_NAME} -Confirm:$false'
 
     Disconnect-ExchangeOnline -Confirm:$false;
     """
@@ -165,5 +141,5 @@ def apply_signature(mail: str = Path(...)):
     else:
         print("Regla aplicada correctamente:", completed.stdout)
 
-    return {"status": "Firma aplicada", "mail": mail}
+    return {"status": "Firma aplicada"}
 
