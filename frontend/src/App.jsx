@@ -95,6 +95,17 @@ export default function App() {
   }
 };
 
+const downloadHtml = () => {
+  const blob = new Blob([preview], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "firma_usuario.html";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
 
   return (
@@ -111,6 +122,12 @@ export default function App() {
         <h2 className="section-title">Vista previa en tiempo real</h2>
         <Preview html={preview} />
       </section>
+
+      <div className="container-save-btn">
+        <button className="save-btn" onClick={downloadHtml}>
+          Descargar HTML
+        </button>
+      </div>
 
       <div className="container-save-btn">
         <button className="save-btn" onClick={saveTemplate}>
