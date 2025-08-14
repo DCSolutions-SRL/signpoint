@@ -11,4 +11,4 @@ else
     echo "Matando procesos: $PIDS"
     kill $PIDS
     echo "Servidores detenidos."
-
+fi
