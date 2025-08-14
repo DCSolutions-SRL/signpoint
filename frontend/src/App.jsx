@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 
 // Componentes existentes
@@ -33,9 +33,39 @@ function renderTemplate(template, data) {
 }
 
 export default function App() {
+  const [token, setToken] = useState(() => localStorage.getItem("sp_token") || "");
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [template, setTemplate] = useState("");
   const [mail, setMail] = useState("");
   const [preview, setPreview] = useState("");
+
+  // axios default auth header
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common["Authorization"];
+    }
+  }, [token]);
+
+  const handleLogin = async (e) => {
+    e?.preventDefault();
+    try {
+      const res = await axios.post(`${API_BASE}/auth/login`, loginForm);
+      const tok = res.data?.access_token;
+      if (tok) {
+        localStorage.setItem("sp_token", tok);
+        setToken(tok);
+      }
+    } catch (err) {
+      alert("Login inválido o DB inaccesible");
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem("sp_token");
+    setToken("");
+  };
 
   // Animaciones reveal on scroll
   const refEditor = useRef(null);
@@ -128,6 +158,50 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  if (!token) {
+    // Pantalla de login con estética del sitio
+    return (
+      <div>
+        <header className="navbar">
+          <div className="container navbar__inner">
+            <div className="brand">
+              <img src={spImg} alt="SignPoint logo" className="brand__logo" />
+              <span>SignPoint</span>
+            </div>
+          </div>
+        </header>
+        <main className="container" style={{ paddingTop: 24 }}>
+          <Card title="Ingresar">
+            <form onSubmit={handleLogin} style={{ display: "grid", gap: 12 }}>
+              <input
+                className="input"
+                placeholder="Usuario SQL Server"
+                value={loginForm.username}
+                onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                required
+              />
+              <input
+                className="input"
+                type="password"
+                placeholder="Contraseña"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                required
+              />
+              <div style={{ display: "flex", gap: 12 }}>
+                <AnimatedButton type="submit">Entrar</AnimatedButton>
+                <AnimatedButton type="button" variant="outline" onClick={async () => {
+                  const r = await axios.get(`${API_BASE}/health/db`).catch(() => null);
+                  alert(r?.data?.ok ? "DB OK" : `DB ERROR: ${r?.data?.error || "sin detalle"}`);
+                }}>Probar DB</AnimatedButton>
+              </div>
+            </form>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* Navbar */}
@@ -140,11 +214,9 @@ export default function App() {
           </div>
           <AnimatedButton
             variant="outline"
-            onClick={() =>
-              window.open("https://dcs.ar", "_blank")
-            }
+            onClick={logout}
           >
-            DCS
+            Salir
           </AnimatedButton>
         </div>
       </header>
