@@ -15,7 +15,8 @@ import spImg from "./assets/sp-img.png";
 
 // NOTA: Eliminamos el import de "./App.css" para evitar conflictos con el nuevo tema
 
-const API_BASE = "http://localhost:8000";
+// Base de la API: usa variable de entorno VITE_API_BASE o por defecto la IP LAN
+const API_BASE = import.meta.env.VITE_API_BASE || "http://192.168.79.142:8000";
 
 const exampleData = {
   nombre: "Nombre Apellido",
@@ -119,7 +120,7 @@ export default function App() {
   const saveAndApply = async () => {
     try {
       // 1. Guardar plantilla
-      const saveRes = await fetch("http://localhost:8000/signature/template", {
+  const saveRes = await fetch(`${API_BASE}/signature/template`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ template }),
@@ -131,7 +132,7 @@ export default function App() {
 
       // 2. Aplicar firma
       const applyRes = await fetch(
-        `http://localhost:8000/signature/apply`,
+        `${API_BASE}/signature/apply`,
         { method: "POST" }
       );
 
