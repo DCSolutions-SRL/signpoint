@@ -68,6 +68,8 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+class ApplyRequest(BaseModel):
+    rule_name: str
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
@@ -157,14 +159,14 @@ async def list_groups(mail: str, user: str = Depends(get_current_user)):
 
 
 @app.post("/signature/apply")
-def apply_signature():
+def apply_signature(req: ApplyRequest):
     
     html = signature_template
 
     # Escapar comillas para PowerShell
     safe_html = html.replace("'", "''")
 
-    RULE_NAME="firma de user martin.matias"
+    RULE_NAME= req.rule_name
     
     ps_command = f"""
     Import-Module ExchangeOnlineManagement;

@@ -89,3 +89,50 @@
   object-fit: contain;
   display: inline-block;
 }
+
+
+/* Estilo para el select tipo botón */
+.select-casino {
+  appearance: none;          /* Quita el estilo nativo del select */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-primary-600);
+  border-radius: var(--radius-md);
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s var(--ease);
+  width: 200px; /* o lo que quieras */
+}
+
+.select-casino:hover {
+  background-color: var(--color-primary-100);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.select-casino:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.25);
+}
+
+/* Icono de flecha personalizada */
+.select-casino-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.select-casino-wrapper::after {
+  content: "▼"; /* flecha hacia abajo */
+  position: absolute;
+  right: 12px;
+  top:50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--color-primary-600);
+}
+

@@ -9,14 +9,14 @@ import Preview from "./components/Preview";
 import { AnimatedButton } from "./components/AnimatedButton";
 import { Card } from "./components/Card";
 import { useRevealOnScroll } from "./hooks/useRevealOnScroll";
+import { ConfirmModal } from "./components/ConfirmModal";
 
 // Importá tu icono PNG (ruta relativa desde App.jsx)
 import spImg from "./assets/sp-img.png";
 
 // NOTA: Eliminamos el import de "./App.css" para evitar conflictos con el nuevo tema
 
-// Base de la API: usa variable de entorno VITE_API_BASE o por defecto la IP LAN
-const API_BASE = import.meta.env.VITE_API_BASE || "http://192.168.79.142:8000";
+const API_BASE = "http://localhost:8000";
 
 const exampleData = {
   nombre: "Nombre Apellido",
@@ -39,6 +39,9 @@ export default function App() {
   const [template, setTemplate] = useState("");
   const [mail, setMail] = useState("");
   const [preview, setPreview] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [selectedCasino, setSelectedCasino] = useState("");
+  const [selectedCasinoLabel, setSelectedCasinoLabel] = useState("");
 
   // axios default auth header
   useEffect(() => {
@@ -116,36 +119,7 @@ export default function App() {
     }
   };
 
-  // Guardar y aplicar
-  const saveAndApply = async () => {
-    try {
-      // 1. Guardar plantilla
-  const saveRes = await fetch(`${API_BASE}/signature/template`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ template }),
-      });
 
-      if (!saveRes.ok) {
-        throw new Error(`Error guardando plantilla (${saveRes.status})`);
-      }
-
-      // 2. Aplicar firma
-      const applyRes = await fetch(
-        `${API_BASE}/signature/apply`,
-        { method: "POST" }
-      );
-
-      if (!applyRes.ok) {
-        throw new Error(`Error aplicando firma (${applyRes.status})`);
-      }
-
-      alert(`Cambio de firma aplicado correctamente`);
-    } catch (err) {
-      console.error("Error en saveAndApply:", err);
-      alert(`Error: ${err.message}`);
-    }
-  };
 
   const downloadHtml = () => {
     const blob = new Blob([preview], { type: "text/html" });
@@ -159,6 +133,35 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  const confirmApply = async () => {
+
+    try {
+      // 1. Guardar plantilla
+      const saveRes = await fetch(`${API_BASE}/signature/template`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template }),
+      });
+      if (!saveRes.ok) throw new Error("Error guardando plantilla");
+
+      // 2. Aplicar en el casino elegido
+      const applyRes = await fetch(`${API_BASE}/signature/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rule_name: selectedCasino }),
+      });
+      if (!applyRes.ok) throw new Error("Error aplicando firma");
+
+      alert(`Firma aplicada en ${selectedCasino}`);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setShowConfirm(false);
+    }
+  };
+
+
+/*
   if (!token) {
     // Pantalla de login con estética del sitio
     return (
@@ -202,7 +205,7 @@ export default function App() {
       </div>
     );
   }
-
+*/
   return (
     <div>
       {/* Navbar */}
@@ -233,16 +236,56 @@ export default function App() {
         <section ref={refEditor} className="reveal" style={{ marginTop: 18 }}>
           <Card title="Editar Plantilla">
             <RichEditor initialHtml={template} onChange={handleTemplateChange} />
+            <label htmlFor="casino" style={{ display: "block", margin: "20px 0 0 0" }}>
+                Selecciona un grupo para aplicar la firma:
+              </label>
+            {/* Selector de casino */}
+            <div style={{ margin: "10px 0" }} className="select-casino-wrapper">
+              
+              <select
+                id="casino"
+                className="select-casino"
+                value={selectedCasino}
+                onChange={(e) => { setSelectedCasino(e.target.value)
+                  const label = e.target.selectedOptions[0].text;
+                  setSelectedCasinoLabel(label)
+                }}
+              >
+                <option value="" disabled hidden>Elegir...</option>
+                <option value="firma_casino_rosario">City Center</option>
+                <option value="firma_casino_online">City Center online</option>
+                <option value="firma_casino_hotel">City Center Hotel</option>
+              </select>
+            </div>
+
 
             <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
               <AnimatedButton onClick={downloadHtml}>Descargar HTML</AnimatedButton>
               <AnimatedButton variant="outline" onClick={saveTemplate}>
                 Guardar Plantilla
               </AnimatedButton>
-              <AnimatedButton onClick={saveAndApply}>Subir Plantilla</AnimatedButton>
+              <AnimatedButton onClick={() => {
+                if (!selectedCasino) {
+                  alert("No se seleccionó ningún casino.");
+                  return;
+                }
+                setShowConfirm(true);
+              }}
+                >Subir Plantilla
+              </AnimatedButton>
             </div>
           </Card>
         </section>
+
+         {showConfirm && (
+            <ConfirmModal
+              casino={selectedCasinoLabel}
+              onCancel={() => setShowConfirm(false)}
+              onConfirm={confirmApply}
+            />
+          )}
+
+
 
         {/* Vista previa en tiempo real */}
         <section ref={refLivePreview} className="reveal" style={{ marginTop: 18 }}>
