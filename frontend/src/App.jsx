@@ -135,7 +135,6 @@ export default function App() {
 
   const confirmApply = async () => {
 
-    try {
       // 1. Guardar plantilla
       const saveRes = await fetch(`${API_BASE}/signature/template`, {
         method: "POST",
@@ -152,16 +151,9 @@ export default function App() {
       });
       if (!applyRes.ok) throw new Error("Error aplicando firma");
 
-      alert(`Firma aplicada en ${selectedCasino}`);
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setShowConfirm(false);
-    }
   };
 
 
-/*
   if (!token) {
     // Pantalla de login con estética del sitio
     return (
@@ -205,7 +197,7 @@ export default function App() {
       </div>
     );
   }
-*/
+
   return (
     <div>
       {/* Navbar */}

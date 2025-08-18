@@ -1,7 +1,23 @@
-import React from "react";
+import React, { useState } from "react";
 import { AnimatedButton } from "./AnimatedButton";
 
 export function ConfirmModal({ casino, onCancel, onConfirm }) {
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const handleConfirm = async () => {
+    setLoading(true);
+    setMessage("");
+    try {
+      await onConfirm(); // Llamada al backend desde App.jsx
+      setMessage(`Firma aplicada correctamente en ${casino}`);
+    } catch (err) {
+      setMessage(`Error: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -35,6 +51,9 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
           IMPORTANTE: esto alterará la firma de todos los usuarios del grupo.
         </p>
 
+        {loading && <p>Cargando...</p>}
+        {message && <p style={{ marginTop: 12 }}>{message}</p>}
+
         <div
           style={{
             display: "flex",
@@ -43,10 +62,16 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
             justifyContent: "flex-end",
           }}
         >
-          <AnimatedButton variant="outline" onClick={onCancel}>
+          <AnimatedButton
+            variant="outline"
+            onClick={onCancel}
+            disabled={loading}
+          >
             Cancelar
           </AnimatedButton>
-          <AnimatedButton onClick={onConfirm}>Confirmar</AnimatedButton>
+          <AnimatedButton onClick={handleConfirm} disabled={loading}>
+            Confirmar
+          </AnimatedButton>
         </div>
       </div>
     </div>
