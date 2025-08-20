@@ -16,11 +16,8 @@ import spImg from "./assets/sp-img.png";
 
 // NOTA: Eliminamos el import de "./App.css" para evitar conflictos con el nuevo tema
 
-<<<<<<< Updated upstream
-const API_BASE = "http://localhost:8000";
-=======
-const API_BASE = "http://127.0.0.1:8000";
->>>>>>> Stashed changes
+const API_BASE = "http://192.168.79.118:8000";
+
 
 const exampleData = {
   nombre: "Nombre Apellido",

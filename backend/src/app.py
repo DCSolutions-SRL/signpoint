@@ -16,7 +16,8 @@ app = FastAPI()
 # CORS: permitir localhost y la IP LAN usada por Vite; configurable por env CORS_ALLOW_ORIGINS (lista separada por comas)
 _cors_origins = os.getenv(
     "CORS_ALLOW_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173,http://192.168.79.142:5173",
+    "http://localhost:5173,http://127.0.0.1:5173,http://192.168.79.118:5173",
+,
 ).split(",")
 app.add_middleware(
     CORSMiddleware,
