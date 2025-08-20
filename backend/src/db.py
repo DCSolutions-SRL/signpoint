@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Config por entorno (con valores por defecto provistos)
-SQL_SERVER = os.getenv("SQLSERVER_SERVER", "tcp:192.168.79.87,1433")
+SQL_SERVER = os.getenv("SQLSERVER_SERVER", "localhost,1433")
 SQL_DATABASE = os.getenv("SQLSERVER_DATABASE", "SIGNPOINT")
 SQL_USER = os.getenv("SQLSERVER_USER", "signpoint")
 SQL_PASSWORD = os.getenv("SQLSERVER_PASSWORD", "SignP01ntPass!")
