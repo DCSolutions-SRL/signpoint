@@ -17,7 +17,7 @@ app = FastAPI()
 _cors_origins = os.getenv(
     "CORS_ALLOW_ORIGINS",
     "http://localhost:5173,http://127.0.0.1:5173,http://192.168.79.118:5173",
-,
+
 ).split(",")
 app.add_middleware(
     CORSMiddleware,
@@ -97,7 +97,7 @@ def health_db():
     return check_connection()
 
 @app.post("/signature/template")
-def save_template(body: TemplateBody, user: str = Depends(get_current_user)):
+def save_template(body: TemplateBody):
     global signature_template
     signature_template = body.template
     return {"status": "Template updated"}

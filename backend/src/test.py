@@ -205,4 +205,3 @@ def apply_signature(req: ApplyRequest):
         print("Regla aplicada correctamente:", completed.stdout)
 
     return {"status": "Firma aplicada"}
-
