@@ -51,7 +51,7 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
           IMPORTANTE: esto alterará la firma de todos los usuarios del grupo.
         </p>
 
-        {loading && <p>Cargando...</p>}
+        {loading && <p>Aplicando firma...</p>}
         {message && <p style={{ marginTop: 12 }}>{message}</p>}
 
         <div

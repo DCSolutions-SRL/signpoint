@@ -108,7 +108,7 @@ def health_db():
     return check_connection()
 
 @app.post("/signature/template")
-def save_template(body: TemplateBody, user: str = Depends(get_current_user)):
+def save_template(body: TemplateBody):
     global signature_template
     signature_template = body.template
     return {"status": "Template updated"}
@@ -177,11 +177,11 @@ def apply_signature(req: ApplyRequest):
                         -CertificatePassword (ConvertTo-SecureString '{CERT_PASSWORD}' -AsPlainText -Force);
 
     Set-TransportRule -Identity '{RULE_NAME}' `
-                    -ApplyHtmlDisclaimerText '{safe_html}' `
-                    -ApplyHtmlDisclaimerFallbackAction Reject
+                    -ApplyHtmlDisclaimerText '{html}' `
+                    -ApplyHtmlDisclaimerFallbackAction Wrap
                     
-    Disable-TransportRule -Identity '{RULE_NAME} -Confirm:$false'
-    Enable-TransportRule -Identity '{RULE_NAME} -Confirm:$false'
+    Disable-TransportRule -Identity '{RULE_NAME}' -Confirm:$false
+    Enable-TransportRule -Identity '{RULE_NAME}' -Confirm:$false
 
     Disconnect-ExchangeOnline -Confirm:$false;
     """
