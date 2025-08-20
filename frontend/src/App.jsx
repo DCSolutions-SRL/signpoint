@@ -18,6 +18,7 @@ import spImg from "./assets/sp-img.png";
 
 const API_BASE = "http://192.168.79.118:8000";
 
+
 const exampleData = {
   nombre: "Nombre Apellido",
   puesto: "Cargo Ejemplo",
@@ -244,8 +245,8 @@ export default function App() {
                 }}
               >
                 <option value="" disabled hidden>Elegir...</option>
-                <option value="firma_casino_rosario">City Center</option>
-                <option value="firma_casino_online">City Center online</option>
+                <option value="firma matias">City Center</option>
+                <option value="firma martin">City Center online</option>
                 <option value="firma_casino_hotel">City Center Hotel</option>
               </select>
             </div>
