@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from graph_service import get_access_token, get_user_by_mail, get_all_users, get_user_groups
@@ -6,12 +6,13 @@ import re
 import os
 import subprocess
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, List, Literal
+from passlib.context import CryptContext
 
 from jose import jwt, JWTError
 from dotenv import load_dotenv
 
-from db import check_connection, connect_with_credentials
+from db import check_connection, connect_with_credentials, connect_default
 
 app = FastAPI()
 
@@ -68,14 +69,207 @@ class ApplyRequest(BaseModel):
     rule_name: str
 
 
+# ====== Roles y administración de usuarios de la app ======
+class MeResponse(BaseModel):
+    user: str
+    role: Literal["admin", "user", "none"] = "none"
+
+
+class AppUser(BaseModel):
+    username: str
+    role: Literal["admin", "user"]
+
+
+class PasswordBody(BaseModel):
+    password: str
+
+
+def ensure_app_users_table():
+    """Crea la tabla app_users si no existe (SQL Server)."""
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'app_users')
+            BEGIN
+                CREATE TABLE app_users (
+                    username NVARCHAR(128) NOT NULL PRIMARY KEY,
+                    role NVARCHAR(16) NOT NULL CHECK (role IN ('admin','user')),
+                    password_hash NVARCHAR(255) NULL,
+                    created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+                    created_by NVARCHAR(128) NULL
+                );
+            END
+            -- Asegurar columna password_hash si la tabla ya existía
+            IF COL_LENGTH('app_users','password_hash') IS NULL
+            BEGIN
+                ALTER TABLE app_users ADD password_hash NVARCHAR(255) NULL;
+            END
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_user_role_from_db(username: str) -> Optional[str]:
+    """Devuelve 'admin' | 'user' si existe, si no None. 'signpoint' es admin implícito."""
+    if not username:
+        return None
+    if username.lower() == "signpoint":
+        return "admin"
+    ensure_app_users_table()
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT role FROM app_users WHERE username = ?", (username,))
+        row = cur.fetchone()
+        if row:
+            return row[0]
+        return None
+    finally:
+        conn.close()
+
+
+def require_admin(username: str):
+    role = get_user_role_from_db(username)
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+@app.get("/auth/me", response_model=MeResponse)
+def me(user: str = Depends(get_current_user)):
+    role = get_user_role_from_db(user) or "none"
+    return MeResponse(user=user, role=role)  # type: ignore[arg-type]
+
+
+@app.get("/app-users", response_model=List[AppUser])
+def list_app_users(user: str = Depends(get_current_user)):
+    require_admin(user)
+    ensure_app_users_table()
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT username, role FROM app_users ORDER BY username")
+        rows = cur.fetchall() or []
+        return [AppUser(username=r[0], role=r[1]) for r in rows]
+    finally:
+        conn.close()
+
+
+@app.post("/app-users", response_model=AppUser)
+def upsert_app_user(app_user: AppUser, user: str = Depends(get_current_user)):
+    require_admin(user)
+    # Validar username básico (emails o nombres con @._- permitidos)
+    if not re.fullmatch(r"[\w.@\-]{3,128}", app_user.username):
+        raise HTTPException(status_code=400, detail="username inválido")
+    ensure_app_users_table()
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        # Upsert simple
+        cur.execute(
+            """
+            IF EXISTS (SELECT 1 FROM app_users WHERE username = ?)
+                UPDATE app_users SET role = ?, created_by = ? WHERE username = ?;
+            ELSE
+                INSERT INTO app_users (username, role, created_by) VALUES (?, ?, ?);
+            """,
+            (
+                app_user.username,  # exists
+                app_user.role, user, app_user.username,  # update
+                app_user.username, app_user.role, user,  # insert
+            ),
+        )
+        conn.commit()
+        return app_user
+    finally:
+        conn.close()
+
+
+@app.delete("/app-users/{username}")
+def delete_app_user(username: str, user: str = Depends(get_current_user)):
+    require_admin(user)
+    if username.lower() == "signpoint":
+        raise HTTPException(status_code=400, detail="No se puede eliminar 'signpoint'")
+    if username.lower() == user.lower():
+        raise HTTPException(status_code=400, detail="No puedes eliminarte a ti mismo")
+    ensure_app_users_table()
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM app_users WHERE username = ?", (username,))
+        conn.commit()
+        return {"status": "deleted", "username": username}
+    finally:
+        conn.close()
+
+
+@app.post("/app-users/{username}/password")
+def set_app_user_password(username: str, body: PasswordBody, user: str = Depends(get_current_user)):
+    require_admin(user)
+    if username.lower() == "signpoint":
+        raise HTTPException(status_code=400, detail="No se puede cambiar contraseña de 'signpoint'")
+    if not body.password or len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="Contraseña demasiado corta (mínimo 6)")
+    ensure_app_users_table()
+    pwd_hash = pwd_context.hash(body.password)
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        # Asegurar fila existente; si no, crear como user por defecto
+        cur.execute(
+            """
+            IF NOT EXISTS (SELECT 1 FROM app_users WHERE username = ?)
+                INSERT INTO app_users (username, role, password_hash, created_by)
+                VALUES (?, 'user', ?, ?);
+            ELSE
+                UPDATE app_users SET password_hash = ?, created_by = ? WHERE username = ?;
+            """,
+            (
+                username,  # not exists check
+                username, pwd_hash, user,  # insert
+                pwd_hash, user, username,  # update
+            ),
+        )
+        conn.commit()
+        return {"status": "password_set", "username": username}
+    finally:
+        conn.close()
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+def _verify_app_user_password(username: str, password: str) -> bool:
+    """Verifica contraseña contra app_users.password_hash. Devuelve True si coincide."""
+    ensure_app_users_table()
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT password_hash FROM app_users WHERE username = ?", (username,))
+        row = cur.fetchone()
+        if not row:
+            return False
+        pwd_hash = row[0]
+        if not pwd_hash:
+            return False
+        try:
+            return pwd_context.verify(password, pwd_hash)
+        except Exception:
+            return False
+    finally:
+        conn.close()
 
 
-def get_current_user(authorization: Optional[str] = None):
+
+def get_current_user(authorization: Optional[str] = Header(None)):
     if not authorization:
         raise HTTPException(status_code=401, detail="Falta token")
     try:
@@ -93,7 +287,11 @@ def get_current_user(authorization: Optional[str] = None):
 
 @app.post("/auth/login", response_model=TokenResponse)
 def login(body: LoginRequest):
-    # Valida usuario/contraseña intentando conectar a SQL Server
+    # 1) Intentar credenciales de la app (bcrypt)
+    if _verify_app_user_password(body.username, body.password):
+        token = create_access_token({"sub": body.username})
+        return TokenResponse(access_token=token)
+    # 2) Fallback: validar intentando conectar a SQL Server
     result = check_connection(body.username, body.password)
     if not result.get("ok"):
         raise HTTPException(status_code=401, detail="Credenciales inválidas o DB inaccesible")

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Path, Depends
+from fastapi import FastAPI, HTTPException, Path, Depends, Header
 import requests
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -8,9 +8,10 @@ import subprocess
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, List, Literal
+from passlib.context import CryptContext
 from jose import jwt, JWTError
-from db import check_connection
+from db import check_connection, connect_default
 
 load_dotenv()
 
@@ -49,6 +50,19 @@ ALLOWED_EMAILS = [
 ]
 
 
+# Plantilla por defecto (igual que en app.py para consistencia)
+signature_template = """
+<div style="font-family:Arial;font-size:12px;">
+    <p>Saludos,<br>
+    <strong>{{displayName}}</strong><br>
+    {{jobTitle}}<br>
+    {{department}}<br>
+    <a href="mailto:{{mail}}">{{mail}}</a>
+    </p>
+</div>
+"""
+
+
 class TemplateBody(BaseModel):
     template: str
 
@@ -71,6 +85,67 @@ class TokenResponse(BaseModel):
 class ApplyRequest(BaseModel):
     rule_name: str
 
+# ====== Roles & Usuarios de app (versión simple para entorno de prueba) ======
+class MeResponse(BaseModel):
+    user: str
+    role: Literal["admin", "user", "none"] = "none"
+
+
+class AppUser(BaseModel):
+    username: str
+    role: Literal["admin", "user"]
+
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def ensure_app_users_table():
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'app_users')
+            BEGIN
+                CREATE TABLE app_users (
+                    username NVARCHAR(128) NOT NULL PRIMARY KEY,
+                    role NVARCHAR(16) NOT NULL CHECK (role IN ('admin','user')),
+                    password_hash NVARCHAR(255) NULL,
+                    created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+                    created_by NVARCHAR(128) NULL
+                );
+            END
+            IF COL_LENGTH('app_users','password_hash') IS NULL
+            BEGIN
+                ALTER TABLE app_users ADD password_hash NVARCHAR(255) NULL;
+            END
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_user_role_from_db(username: str) -> Optional[str]:
+    if not username:
+        return None
+    if username.lower() == "signpoint":
+        return "admin"
+    ensure_app_users_table()
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT role FROM app_users WHERE username = ?", (username,))
+        row = cur.fetchone()
+        return row[0] if row else None
+    finally:
+        conn.close()
+
+
+def _require_admin(username: str):
+    if get_user_role_from_db(username) != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
@@ -78,7 +153,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def get_current_user(authorization: Optional[str] = None):
+def get_current_user(authorization: Optional[str] = Header(None)):
     if not authorization:
         raise HTTPException(status_code=401, detail="Falta token")
     try:
@@ -96,6 +171,23 @@ def get_current_user(authorization: Optional[str] = None):
 
 @app.post("/auth/login", response_model=TokenResponse)
 def login(body: LoginRequest):
+    # 1) Credenciales de app (bcrypt en DB)
+    ensure_app_users_table()
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT password_hash FROM app_users WHERE username = ?", (body.username,))
+        row = cur.fetchone()
+    finally:
+        conn.close()
+    if row and row[0]:
+        try:
+            if pwd_context.verify(body.password, row[0]):
+                token = create_access_token({"sub": body.username})
+                return TokenResponse(access_token=token)
+        except Exception:
+            pass
+    # 2) Fallback a SQL Server
     result = check_connection(body.username, body.password)
     if not result.get("ok"):
         raise HTTPException(status_code=401, detail="Credenciales inválidas o DB inaccesible")
@@ -112,6 +204,106 @@ def save_template(body: TemplateBody):
     global signature_template
     signature_template = body.template
     return {"status": "Template updated"}
+
+
+@app.get("/auth/me", response_model=MeResponse)
+def me(user: str = Depends(get_current_user)):
+    role = get_user_role_from_db(user) or "none"
+    return MeResponse(user=user, role=role)  # type: ignore[arg-type]
+
+
+@app.get("/app-users", response_model=List[AppUser])
+def list_app_users(user: str = Depends(get_current_user)):
+    _require_admin(user)
+    ensure_app_users_table()
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT username, role FROM app_users ORDER BY username")
+        rows = cur.fetchall() or []
+        return [AppUser(username=r[0], role=r[1]) for r in rows]
+    finally:
+        conn.close()
+
+
+@app.post("/app-users", response_model=AppUser)
+def upsert_app_user(app_user: AppUser, user: str = Depends(get_current_user)):
+    _require_admin(user)
+    ensure_app_users_table()
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            IF EXISTS (SELECT 1 FROM app_users WHERE username = ?)
+                UPDATE app_users SET role = ?, created_by = ? WHERE username = ?;
+            ELSE
+                INSERT INTO app_users (username, role, created_by) VALUES (?, ?, ?);
+            """,
+            (
+                app_user.username,
+                app_user.role, user, app_user.username,
+                app_user.username, app_user.role, user,
+            ),
+        )
+        conn.commit()
+        return app_user
+    finally:
+        conn.close()
+
+
+@app.delete("/app-users/{username}")
+def delete_app_user(username: str, user: str = Depends(get_current_user)):
+    _require_admin(user)
+    if username.lower() == "signpoint":
+        raise HTTPException(status_code=400, detail="No se puede eliminar 'signpoint'")
+    if username.lower() == user.lower():
+        raise HTTPException(status_code=400, detail="No puedes eliminarte a ti mismo")
+    ensure_app_users_table()
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM app_users WHERE username = ?", (username,))
+        conn.commit()
+        return {"status": "deleted", "username": username}
+    finally:
+        conn.close()
+
+
+class PasswordBody(BaseModel):
+    password: str
+
+
+@app.post("/app-users/{username}/password")
+def set_app_user_password(username: str, body: PasswordBody, user: str = Depends(get_current_user)):
+    _require_admin(user)
+    if username.lower() == "signpoint":
+        raise HTTPException(status_code=400, detail="No se puede cambiar contraseña de 'signpoint'")
+    if not body.password or len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="Contraseña demasiado corta (mínimo 6)")
+    ensure_app_users_table()
+    pwd_hash = pwd_context.hash(body.password)
+    conn = connect_default()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            IF NOT EXISTS (SELECT 1 FROM app_users WHERE username = ?)
+                INSERT INTO app_users (username, role, password_hash, created_by)
+                VALUES (?, 'user', ?, ?);
+            ELSE
+                UPDATE app_users SET password_hash = ?, created_by = ? WHERE username = ?;
+            """,
+            (
+                username,
+                username, pwd_hash, user,
+                pwd_hash, user, username,
+            ),
+        )
+        conn.commit()
+        return {"status": "password_set", "username": username}
+    finally:
+        conn.close()
 
 @app.get("/signature/user/{mail}")
 def generate_signature(mail: str, user: str = Depends(get_current_user)):
