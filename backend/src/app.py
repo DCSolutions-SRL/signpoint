@@ -4,14 +4,19 @@ from pydantic import BaseModel
 from graph_service import get_access_token, get_user_by_mail, get_all_users, get_user_groups
 import re
 import os
+import subprocess
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from jose import jwt, JWTError
+from dotenv import load_dotenv
 
 from db import check_connection, connect_with_credentials
 
 app = FastAPI()
+
+# Cargar variables de entorno desde .env si existe
+load_dotenv()
 
 # CORS: permitir localhost y la IP LAN usada por Vite; configurable por env CORS_ALLOW_ORIGINS (lista separada por comas)
 _cors_origins = os.getenv(
@@ -57,6 +62,10 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class ApplyRequest(BaseModel):
+    rule_name: str
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -105,14 +114,27 @@ def save_template(body: TemplateBody):
 @app.get("/signature/user/{mail}")
 def generate_signature(mail: str, user: str = Depends(get_current_user)):
     token = get_access_token()
-    user = get_user_by_mail(token, mail)
-    if not user:
+    graph_user = get_user_by_mail(token, mail)
+    if not graph_user:
         return {"error": "User not found"}
 
+    # Soportar placeholders en español y en inglés
+    replacements = {
+        # Español
+        "nombre": graph_user.get("displayName", ""),
+        "puesto": graph_user.get("jobTitle", ""),
+        "departamento": graph_user.get("department", ""),
+        "celular": graph_user.get("mobilePhone", ""),
+        # Inglés / claves originales
+        "displayName": graph_user.get("displayName", ""),
+        "jobTitle": graph_user.get("jobTitle", ""),
+        "department": graph_user.get("department", ""),
+        "mail": graph_user.get("mail", ""),
+    }
+
     html = signature_template
-    for key in ["displayName", "mail", "jobTitle", "department"]:
-        value = user.get(key) or ""
-        html = re.sub(r"{{" + key + "}}", value, html)
+    for key, value in replacements.items():
+        html = re.sub(r"{{" + key + "}}", value or "", html)
 
     return {"mail": mail, "signature": html}
 
@@ -131,3 +153,76 @@ async def list_groups(mail: str, user: str = Depends(get_current_user)):
         return {"groups": groups}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ====== Aplicar firma en Exchange Online (PowerShell) ======
+# Variables de entorno requeridas para conexión por certificado
+APP_ID = os.getenv("APP_ID")
+CERT_PASSWORD = os.getenv("CERT_PASSWORD")
+# Aceptar tanto ORGANIZATION (correcto) como ORGANIZARTION (legacy/typo)
+ORGANIZATION = os.getenv("ORGANIZATION") or os.getenv("ORGANIZARTION")
+CERT_ROUTE = os.getenv("CERT_ROUTE")
+
+
+@app.post("/signature/apply")
+def apply_signature(req: ApplyRequest, user: str = Depends(get_current_user)):
+    """Aplica la firma HTML actual a una regla de transporte en Exchange Online.
+
+    Requiere que PowerShell Core (pwsh) y el módulo ExchangeOnlineManagement
+    estén instalados en el servidor.
+    """
+
+    # Validaciones mínimas de configuración
+    missing = [
+        name for name, value in [
+            ("APP_ID", APP_ID),
+            ("CERT_PASSWORD", CERT_PASSWORD),
+            ("ORGANIZATION", ORGANIZATION),
+            ("CERT_ROUTE", CERT_ROUTE),
+        ]
+        if not value
+    ]
+    if missing:
+        raise HTTPException(status_code=500, detail=f"Faltan variables de entorno: {', '.join(missing)}")
+
+    html = signature_template or ""
+
+    # Escapar comillas simples para PowerShell (strings comillas simples)
+    safe_html = (html or "").replace("'", "''")
+
+    rule_name = req.rule_name
+    if not rule_name:
+        raise HTTPException(status_code=400, detail="rule_name es requerido")
+
+    ps_command = f"""
+    Import-Module ExchangeOnlineManagement;
+
+    Connect-ExchangeOnline -AppId '{APP_ID}' `
+                        -Organization '{ORGANIZATION}' `
+                        -CertificateFile '{CERT_ROUTE}' `
+                        -CertificatePassword (ConvertTo-SecureString '{CERT_PASSWORD}' -AsPlainText -Force);
+
+    Set-TransportRule -Identity '{rule_name}' `
+                    -ApplyHtmlDisclaimerText '{safe_html}' `
+                    -ApplyHtmlDisclaimerFallbackAction Wrap;
+
+    Disable-TransportRule -Identity '{rule_name}' -Confirm:$false;
+    Enable-TransportRule -Identity '{rule_name}' -Confirm:$false;
+
+    Disconnect-ExchangeOnline -Confirm:$false;
+    """
+
+    try:
+        completed = subprocess.run([
+            "pwsh",
+            "-Command",
+            ps_command,
+        ], capture_output=True, text=True)
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail="PowerShell (pwsh) no encontrado en el sistema")
+
+    if completed.returncode != 0:
+        err = completed.stderr.strip() or "Error desconocido ejecutando PowerShell"
+        raise HTTPException(status_code=500, detail=f"PowerShell error: {err}")
+
+    return {"status": "Firma aplicada"}
