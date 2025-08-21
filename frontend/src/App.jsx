@@ -10,6 +10,7 @@ import { AnimatedButton } from "./components/AnimatedButton";
 import { Card } from "./components/Card";
 import { useRevealOnScroll } from "./hooks/useRevealOnScroll";
 import { ConfirmModal } from "./components/ConfirmModal";
+import { UserAdmin } from "./components/UserAdmin";
 
 // Importá tu icono PNG (ruta relativa desde App.jsx)
 import spImg from "./assets/sp-img.png";
@@ -37,6 +38,9 @@ function renderTemplate(template, data) {
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem("sp_token") || "");
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
+  const [me, setMe] = useState({ user: "", role: "none" });
+  const [activeView, setActiveView] = useState("editor"); // editor | users
+  const [showAbout, setShowAbout] = useState(false);
   const [template, setTemplate] = useState("");
   const [mail, setMail] = useState("");
   const [preview, setPreview] = useState("");
@@ -48,8 +52,12 @@ export default function App() {
   useEffect(() => {
     if (token) {
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  // Cargar perfil/rol
+  axios.get(`${API_BASE}/auth/me`).then(r => setMe(r.data)).catch(() => setMe({ user: "", role: "none" }));
     } else {
       delete axios.defaults.headers.common["Authorization"];
+  setMe({ user: "", role: "none" });
+  setActiveView("editor");
     }
   }, [token]);
 
@@ -161,10 +169,13 @@ export default function App() {
       <div>
         <header className="navbar">
           <div className="container navbar__inner">
-            <div className="brand">
+            <a href="https://www.dcs.ar" target="_blank" rel="noopener noreferrer" className="brand" style={{ textDecoration: "none", color: "inherit" }}>
               <img src={spImg} alt="SignPoint logo" className="brand__logo" />
               <span>SignPoint</span>
-            </div>
+            </a>
+            <AnimatedButton variant="outline" onClick={() => setShowAbout(v => !v)}>
+                About
+            </AnimatedButton>
           </div>
         </header>
         <main className="container" style={{ paddingTop: 24 }}>
@@ -172,7 +183,7 @@ export default function App() {
             <form onSubmit={handleLogin} style={{ display: "grid", gap: 12 }}>
               <input
                 className="input"
-                placeholder="Usuario SQL Server"
+                placeholder="Usuario (app o SQL Server)"
                 value={loginForm.username}
                 onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
                 required
@@ -187,14 +198,27 @@ export default function App() {
               />
               <div style={{ display: "flex", gap: 12 }}>
                 <AnimatedButton type="submit">Entrar</AnimatedButton>
-                <AnimatedButton type="button" variant="outline" onClick={async () => {
-                  const r = await axios.get(`${API_BASE}/health/db`).catch(() => null);
-                  alert(r?.data?.ok ? "DB OK" : `DB ERROR: ${r?.data?.error || "sin detalle"}`);
-                }}>Probar DB</AnimatedButton>
               </div>
             </form>
           </Card>
         </main>
+        {showAbout && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ background: "#fff", padding: 24, borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.2)", maxWidth: 520, width: "90%" }}>
+              <h2 style={{ marginBottom: 12 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <img src={spImg} alt="SignPoint" className="brand__logo" style={{ width: 20, height: 20 }} />
+                  <strong>SignPoint</strong>
+                </span>
+              </h2>
+              <p>Administrador de firmas de correo.</p>
+              <p>Desarrollado por <a href="https://www.dcs.ar" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)" }}>DCSolutions SRL</a>.</p>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+                <AnimatedButton variant="outline" onClick={() => setShowAbout(false)}>Cerrar</AnimatedButton>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -205,28 +229,43 @@ export default function App() {
       <header className="navbar">
         <div className="container navbar__inner">
           <div className="brand">
-            {/* Reemplaza el punto por tu icono PNG */}
-            <img src={spImg} alt="SignPoint logo" className="brand__logo" />
-            <span>SignPoint</span>
+            <a href="https://www.dcs.ar" target="_blank" rel="noopener noreferrer" className="brand" style={{ textDecoration: "none", color: "inherit" }}>
+              <img src={spImg} alt="SignPoint logo" className="brand__logo" />
+              <span>SignPoint</span>
+            </a>
           </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {(me.role === "admin") && (
+              <AnimatedButton
+                variant={activeView === "users" ? "primary" : "outline"}
+                onClick={() => setActiveView(activeView === "users" ? "editor" : "users")}
+              >
+                Alta de usuarios
+              </AnimatedButton>
+            )}
           <AnimatedButton
             variant="outline"
             onClick={logout}
           >
             Salir
           </AnimatedButton>
+          </div>
         </div>
       </header>
 
       {/* Contenido */}
       <main className="container" style={{ paddingTop: 24, paddingBottom: 48 }}>
-        <h1 className="animate-fade-in-up">Editor de Firmas</h1>
-        <p className="animate-fade-in-up" style={{ color: "var(--color-muted)", marginTop: 6 }}>
-          Editá la plantilla y previsualizá en tiempo real.
-        </p>
+        {activeView === "users" ? (
+          <UserAdmin apiBase={API_BASE} />
+        ) : (
+          <>
+            <h1 className="animate-fade-in-up">Editor de Firmas</h1>
+            <p className="animate-fade-in-up" style={{ color: "var(--color-muted)", marginTop: 6 }}>
+              Editá la plantilla y previsualizá en tiempo real.
+            </p>
 
-        {/* Editor */}
-        <section ref={refEditor} className="reveal" style={{ marginTop: 18 }}>
+  {/* Editor */}
+  <section ref={refEditor} className="reveal" style={{ marginTop: 18 }}>
           <Card title="Editar Plantilla">
             <RichEditor initialHtml={template} onChange={handleTemplateChange} />
             <label htmlFor="casino" style={{ display: "block", margin: "20px 0 0 0" }}>
@@ -287,22 +326,26 @@ export default function App() {
           </Card>
         </section>
 
-        {/* Vista previa para usuario real */}
-        <section ref={refUserPreview} className="reveal" style={{ marginTop: 18 }}>
-          <Card title="Vista previa para usuario real">
-            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-              <input
-                type="email"
-                className="input"
-                placeholder="email del usuario"
-                value={mail}
-                onChange={(e) => setMail(e.target.value)}
-                style={{ minWidth: 260, flex: "1 1 260px" }}
-              />
-              <AnimatedButton onClick={getSignature}>Generar Firma</AnimatedButton>
-            </div>
-          </Card>
-        </section>
+        {/* Vista previa para usuario real (oculta por no uso) */}
+        {false && (
+          <section ref={refUserPreview} className="reveal" style={{ marginTop: 18 }}>
+            <Card title="Vista previa para usuario real">
+              <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                <input
+                  type="email"
+                  className="input"
+                  placeholder="email del usuario"
+                  value={mail}
+                  onChange={(e) => setMail(e.target.value)}
+                  style={{ minWidth: 260, flex: "1 1 260px" }}
+                />
+                <AnimatedButton onClick={getSignature}>Generar Firma</AnimatedButton>
+              </div>
+            </Card>
+          </section>
+        )}
+          </>
+        )}
       </main>
     </div>
   );
