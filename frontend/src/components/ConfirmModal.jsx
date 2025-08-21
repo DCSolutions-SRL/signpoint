@@ -1,22 +1,33 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { AnimatedButton } from "./AnimatedButton";
 
 export function ConfirmModal({ casino, onCancel, onConfirm }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [success, setSuccess] = useState(false);
 
   const handleConfirm = async () => {
     setLoading(true);
     setMessage("");
     try {
       await onConfirm(); // Llamada al backend desde App.jsx
-      setMessage(`Firma aplicada correctamente en ${casino}`);
+      setMessage(`Plantilla cargada exitosamente en ${casino}`);
+      setSuccess(true);
     } catch (err) {
       setMessage(`Error: ${err.message}`);
+      setSuccess(false);
     } finally {
       setLoading(false);
     }
   };
+
+  // Cierre automático tras éxito
+  useEffect(() => {
+    if (success) {
+      const t = setTimeout(() => onCancel?.(), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [success, onCancel]);
 
   return (
     <div
@@ -51,8 +62,17 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
           IMPORTANTE: esto alterará la firma de todos los usuarios del grupo.
         </p>
 
-        {loading && <p>Aplicando firma...</p>}
-        {message && <p style={{ marginTop: 12 }}>{message}</p>}
+        {loading && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+            <span className="spinner" style={{ width: 18, height: 18 }} />
+            <span>Aplicando firma...</span>
+          </div>
+        )}
+        {message && (
+          <p style={{ marginTop: 12, color: success ? "#059669" : "#B91C1C", fontWeight: success ? 600 : 500 }}>
+            {message}
+          </p>
+        )}
 
         <div
           style={{
@@ -69,7 +89,7 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
           >
             Cancelar
           </AnimatedButton>
-          <AnimatedButton onClick={handleConfirm} disabled={loading}>
+          <AnimatedButton onClick={handleConfirm} loading={loading} disabled={loading}>
             Confirmar
           </AnimatedButton>
         </div>

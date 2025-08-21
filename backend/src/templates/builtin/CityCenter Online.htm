@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Documento</title>
+</head>
+<body>
+  <style>
+    p, table, a, span {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 12pt;
+        color: black;
+    }
+
+    .signature-icons img {
+        height: 20px;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+
+    .signature-icons.orange img {
+        filter: brightness(0) saturate(100%) invert(43%) sepia(100%) saturate(740%) hue-rotate(0deg);
+    }
+
+    .signature-icons.purple img {
+        filter: brightness(0) saturate(100%) invert(27%) sepia(77%) saturate(7465%) hue-rotate(241deg);
+    }
+
+    .signature-icons.gray img {
+        filter: brightness(0) saturate(100%) invert(37%) sepia(0%) saturate(0%) hue-rotate(175deg);
+    }
+  </style>
+  <style>
+    .signature-wrapper {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        max-width: 400px;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 12pt;
+        color: black;
+    }
+
+    .signature-left {
+        flex: 1;
+    }
+
+    .signature-logo img {
+        height: 100px;
+        margin-left: 10px;
+    }
+
+    .signature-icons {
+        margin-top: 10px;
+    }
+
+    .signature-icons img {
+        height: 20px;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+
+    .signature-icons.orange img {
+        filter: brightness(0) saturate(100%) invert(43%) sepia(100%) saturate(740%) hue-rotate(0deg);
+    }
+
+    .signature-icons.purple img {
+        filter: brightness(0) saturate(100%) invert(27%) sepia(77%) saturate(7465%) hue-rotate(241deg);
+    }
+
+    .signature-icons.gray img {
+        filter: brightness(0) saturate(100%) invert(37%) sepia(0%) saturate(0%) hue-rotate(175deg);
+    }
+  </style>
+
+  <div class="signature-wrapper">
+      <div class="signature-left">
+          <div>
+              <span><b>{{nombre}}</b></span><br>
+              <span>{{puesto}}</span><br>
+              <span>{{departamento}}</span><br>
+              <span>{{celular}}</span><br>
+          </div>
+
+          <div class="signature-icons purple">
+              <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer">
+                  <img src="https://cdn-icons-png.freepik.com/512/174/174857.png"></a><a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer"><img src="https://img.icons8.com/ios_filled/512/228BE6/youtube-play.png"></a><a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer"><img src="https://png.pngtree.com/png-vector/20221018/ourmid/pngtree-instagram-social-flat-silhouette-icons-png-image_6315977.png"></a><a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer"><img src="https://cdn-icons-png.flaticon.com/512/20/20673.png"></a><a href="https://www.google.com/maps/place/City+Center+Rosario/" target="_blank" rel="noopener noreferrer"><img src="https://png.pngtree.com/png-vector/20240929/ourmid/pngtree-3d-location-icon-clipart-in-transparent-background-png-image_13983760.png"></a><a href="https://www.citycenteronline.bet.ar/" target="_blank" rel="noopener noreferrer"><img src="https://pngimg.com/uploads/phone/phone_PNG48972.png">
+              </a>
+          </div>
+      </div>
+
+      <div class="signature-logo">
+          <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ53Nsnf3d4mGlG5cUWjpZuii0Xhv55kLdsmA&s" height="60">
+      </div>
+  </div>
+</body>
+</html>
