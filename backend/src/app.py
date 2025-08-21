@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from graph_service import get_access_token, get_user_by_mail, get_all_users, get_user_groups
@@ -7,6 +7,7 @@ import os
 import subprocess
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Literal
+from pathlib import Path
 from passlib.context import CryptContext
 
 from jose import jwt, JWTError
@@ -47,6 +48,60 @@ signature_template = """
 
 class TemplateBody(BaseModel):
     template: str
+    name: Optional[str] = None
+
+class TemplateMeta(BaseModel):
+    name: str
+    kind: Literal["builtin", "user"]
+
+TEMPLATES_ROOT = Path(__file__).parent / "templates"
+USER_TEMPLATES = TEMPLATES_ROOT / "user"
+BUILTIN_TEMPLATES = TEMPLATES_ROOT / "builtin"
+USER_TEMPLATES.mkdir(parents=True, exist_ok=True)
+BUILTIN_TEMPLATES.mkdir(parents=True, exist_ok=True)
+
+def _sanitize_name(name: str) -> str:
+    # evitar escapes o rutas
+    name = name.strip().replace("/", " ").replace("\\", " ")
+    if not name:
+        raise HTTPException(status_code=400, detail="Nombre de plantilla vacío")
+    return name
+
+def list_templates_meta() -> List[TemplateMeta]:
+    items: List[TemplateMeta] = []
+    # builtin
+    for p in BUILTIN_TEMPLATES.glob("*.htm*"):
+        items.append(TemplateMeta(name=p.stem, kind="builtin"))
+    # user
+    for p in USER_TEMPLATES.glob("*.htm*"):
+        items.append(TemplateMeta(name=p.stem, kind="user"))
+    # ordenar: builtin primero alfabético, luego user alfabético
+    return sorted(items, key=lambda x: (0 if x.kind=="builtin" else 1, x.name.lower()))
+
+def load_template_by_name(name: str) -> Optional[str]:
+    safe = _sanitize_name(name)
+    for folder in (USER_TEMPLATES, BUILTIN_TEMPLATES):
+        for ext in (".htm", ".html"):
+            p = folder / f"{safe}{ext}"
+            if p.exists():
+                return p.read_text(encoding="utf-8")
+    return None
+
+def save_user_template(name: str, content: str):
+    safe = _sanitize_name(name)
+    p = USER_TEMPLATES / f"{safe}.htm"
+    p.write_text(content or "", encoding="utf-8")
+
+def delete_user_template(name: str):
+    safe = _sanitize_name(name)
+    deleted = False
+    for ext in (".htm", ".html"):
+        p = USER_TEMPLATES / f"{safe}{ext}"
+        if p.exists():
+            p.unlink()
+            deleted = True
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Plantilla no encontrada para borrar")
 
 
 # ====== Auth / Login (JWT simple) ======
@@ -303,11 +358,44 @@ def login(body: LoginRequest):
 def health_db():
     return check_connection()
 
-@app.post("/signature/template")
-def save_template(body: TemplateBody):
-    global signature_template
-    signature_template = body.template
-    return {"status": "Template updated"}
+@app.get("/templates", response_model=List[TemplateMeta])
+def api_list_templates(user: str = Depends(get_current_user)):
+    return list_templates_meta()
+
+@app.get("/templates/{name}")
+def api_get_template(name: str, user: str = Depends(get_current_user)):
+    html = load_template_by_name(name)
+    if html is None:
+        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
+    return {"name": name, "template": html}
+
+class SaveNamedTemplateBody(BaseModel):
+    name: str
+    template: str
+    overwrite: bool = False
+
+@app.post("/templates")
+def api_create_or_overwrite_template(body: SaveNamedTemplateBody, user: str = Depends(get_current_user)):
+    require_admin(user)
+    existing_html = load_template_by_name(body.name)
+    # si existe en builtin y no overwrite -> prohibir
+    builtin_exists = any((BUILTIN_TEMPLATES / f"{_sanitize_name(body.name)}{ext}").exists() for ext in (".htm", ".html"))
+    user_exists = any((USER_TEMPLATES / f"{_sanitize_name(body.name)}{ext}").exists() for ext in (".htm", ".html"))
+    if (builtin_exists or user_exists) and not body.overwrite:
+        # indicar que requiere confirmación
+        raise HTTPException(status_code=409, detail="La plantilla ya existe. Requiere confirmación para sobrescribir.")
+    # Sólo permitimos sobreescribir realmente en carpeta user (no tocamos builtin)
+    save_user_template(body.name, body.template)
+    return {"status": "saved", "name": body.name}
+
+@app.delete("/templates/{name}")
+def api_delete_template(name: str, user: str = Depends(get_current_user)):
+    require_admin(user)
+    # No permitir borrar builtin
+    if any((BUILTIN_TEMPLATES / f"{_sanitize_name(name)}{ext}").exists() for ext in (".htm", ".html")):
+        raise HTTPException(status_code=400, detail="No se puede eliminar una plantilla predefinida")
+    delete_user_template(name)
+    return {"status": "deleted", "name": name}
 
 @app.get("/signature/user/{mail}")
 def generate_signature(mail: str, user: str = Depends(get_current_user)):

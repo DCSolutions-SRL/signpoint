@@ -89,7 +89,19 @@
   border-radius: 8px;
   padding: 22px;
   margin: 18px 0;
-  max-width: 440px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Contenido responsivo dentro de la vista previa */
+.preview-container img {
+  max-width: 100%;
+  height: auto;
+}
+
+.preview-container table {
+  max-width: 100%;
 }
 
 /* Estilos para el editor */
@@ -156,6 +168,13 @@
   outline: none;
   color: #000000;
   margin-top: 8px;
+}
+
+/* Asegurar que las imágenes insertadas se vean y no desborden */
+.rich-editor-area img {
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
 }
 
 .rich-upload-group {

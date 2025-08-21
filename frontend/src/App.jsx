@@ -47,6 +47,9 @@ export default function App() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [selectedCasino, setSelectedCasino] = useState("");
   const [selectedCasinoLabel, setSelectedCasinoLabel] = useState("");
+  const [userUploadedHtml, setUserUploadedHtml] = useState(false);
+  const [templates, setTemplates] = useState([]); // {name, kind}
+  const [selectedTemplateName, setSelectedTemplateName] = useState("");
 
   // axios default auth header
   useEffect(() => {
@@ -90,10 +93,38 @@ export default function App() {
   useRevealOnScroll(refUserPreview);
 
   // Cuando el usuario edita desde el editor
-  const handleTemplateChange = (newHtml) => {
+  const handleTemplateChange = (newHtml, opts = {}) => {
+    // opts.userUpload indica si viene de "Cargar HTML" y debe desactivar autoload
+    if (opts.userUpload) setUserUploadedHtml(true);
     setTemplate(newHtml);
     setPreview(renderTemplate(newHtml, exampleData));
   };
+
+  // Cargar listado de plantillas desde backend
+  useEffect(() => {
+    if (!token) return;
+    axios.get(`${API_BASE}/templates`)
+      .then(r => setTemplates(r.data || []))
+      .catch((e) => {
+        console.error("Error obteniendo plantillas:", e?.response?.status, e?.message);
+        setTemplates([]);
+      });
+  }, [token]);
+
+  const loadTemplateByName = async (name) => {
+    if (!name) return;
+    try {
+      const r = await axios.get(`${API_BASE}/templates/${encodeURIComponent(name)}`);
+      const html = r.data?.template || "";
+      setTemplate(html);
+      setPreview(renderTemplate(html, exampleData));
+      setUserUploadedHtml(false);
+    } catch (e) {
+      alert("No se pudo cargar la plantilla seleccionada");
+    }
+  };
+
+  const resetToTemplates = () => setUserUploadedHtml(false);
 
   // Obtener firma real desde backend
   const getSignature = async () => {
@@ -278,24 +309,110 @@ export default function App() {
                 id="casino"
                 className="select-casino"
                 value={selectedCasino}
-                onChange={(e) => { setSelectedCasino(e.target.value)
+                onChange={(e) => {
+                  setSelectedCasino(e.target.value);
                   const label = e.target.selectedOptions[0].text;
-                  setSelectedCasinoLabel(label)
+                  setSelectedCasinoLabel(label);
                 }}
               >
                 <option value="" disabled hidden>Elegir...</option>
-                <option value="firma matias">City Center</option>
-                <option value="firma martin">City Center online</option>
-                <option value="firma_casino_hotel">City Center Hotel</option>
+                <option value="firma matias">CityCenter</option>
+                <option value="firma martin">CityCenter Online</option>
+                <option value="firma_casino_hotel">CityCenter Hotel</option>
               </select>
             </div>
+
+            {/* Desplegable de Plantillas */}
+            <div style={{ margin: "10px 0" }}>
+              <label htmlFor="tpl" style={{ display: "block" }}>Plantillas:</label>
+              <select
+                id="tpl"
+                className="select-casino"
+                value={selectedTemplateName}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  setSelectedTemplateName(name);
+                  if (name) loadTemplateByName(name);
+                }}
+              >
+                <option value="">Elegir plantilla...</option>
+                {templates.length === 0 && (
+                  <option value="" disabled>(no hay plantillas)</option>
+                )}
+                {templates.map(t => (
+                  <option key={`${t.kind}:${t.name}`} value={t.name}>
+                    {t.kind === 'builtin' ? `⭐ ${t.name}` : t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {userUploadedHtml && (
+              <div style={{ marginTop: 8, fontSize: 12, color: "var(--color-muted)" }}>
+                Usando HTML cargado por el usuario. <button style={{ marginLeft: 8 }} className="linklike" onClick={resetToTemplates}>Volver a usar templates</button>
+              </div>
+            )}
 
 
             <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
               <AnimatedButton onClick={downloadHtml}>Descargar HTML</AnimatedButton>
-              <AnimatedButton variant="outline" onClick={saveTemplate}>
+              {me.role === 'admin' && (
+              <AnimatedButton variant="outline" onClick={async () => {
+                const name = prompt("Nombre para la plantilla:", selectedTemplateName || "");
+                if (!name) return;
+                try {
+                  await axios.post(`${API_BASE}/templates`, { name, template }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+                  alert("Plantilla guardada");
+                } catch (e) {
+                  if (e?.response?.status === 409) {
+                    const ok = confirm(`La plantilla '${name}' ya existe. ¿Desea sobrescribirla?`);
+                    if (!ok) return;
+                    await axios.post(`${API_BASE}/templates`, { name, template, overwrite: true }, {
+                      headers: { Authorization: `Bearer ${token}` }
+                    });
+                    alert("Plantilla sobrescrita");
+                  } else {
+                    const msg = e?.response?.data?.detail || e?.message || "Error al guardar plantilla";
+                    alert(msg);
+                  }
+                }
+                // refrescar listado
+                try {
+                  const r = await axios.get(`${API_BASE}/templates`, { headers: { Authorization: `Bearer ${token}` } });
+                  setTemplates(r.data || []);
+                  setSelectedTemplateName(name);
+                } catch {}
+              }}>
                 Guardar Plantilla
               </AnimatedButton>
+              )}
+
+              {me.role === 'admin' && (
+              <AnimatedButton variant="outline" onClick={async () => {
+                if (!selectedTemplateName) { alert("Seleccione una plantilla para eliminar"); return; }
+                const meta = templates.find(t => t.name === selectedTemplateName);
+                if (!meta) { alert("Plantilla no encontrada en el listado"); return; }
+                if (meta.kind === 'builtin') { alert("No se puede eliminar una plantilla predefinida"); return; }
+                const ok = confirm(`¿Eliminar la plantilla '${selectedTemplateName}'? Esta acción no se puede deshacer.`);
+                if (!ok) return;
+                try {
+                  await axios.delete(`${API_BASE}/templates/${encodeURIComponent(selectedTemplateName)}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+                  alert("Plantilla eliminada");
+                  setSelectedTemplateName("");
+                  const r = await axios.get(`${API_BASE}/templates`, { headers: { Authorization: `Bearer ${token}` } });
+                  setTemplates(r.data || []);
+                } catch (e) {
+                  const msg = e?.response?.data?.detail || e?.message || "Error al eliminar plantilla";
+                  alert(msg);
+                }
+              }}>
+                Eliminar Plantilla
+              </AnimatedButton>
+              )}
               <AnimatedButton onClick={() => {
                 if (!selectedCasino) {
                   alert("No se seleccionó ningún casino.");

@@ -29,6 +29,21 @@
 .btn--outline:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 .btn--outline:active { transform: translateY(0); }
 
+/* Spinner minimal */
+.spinner {
+  display: inline-block;
+  border: 2px solid rgba(0,0,0,.15);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  animation: spin .9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Tarjetas */
 .card {
   background: var(--color-surface);
