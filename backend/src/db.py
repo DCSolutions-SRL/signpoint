@@ -7,10 +7,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Config por entorno (con valores por defecto provistos)
-SQL_SERVER = os.getenv("SQLSERVER_SERVER", "localhost,1433")
-SQL_DATABASE = os.getenv("SQLSERVER_DATABASE", "SIGNPOINT")
-SQL_USER = os.getenv("SQLSERVER_USER", "signpoint")
-SQL_PASSWORD = os.getenv("SQLSERVER_PASSWORD", "SignP01ntPass!")
+SQL_SERVER = os.getenv("SQLSERVER_SERVER")
+SQL_DATABASE = os.getenv("SQLSERVER_DATABASE")
+SQL_USER = os.getenv("SQLSERVER_USER")
+SQL_PASSWORD = os.getenv("SQLSERVER_PASSWORD")
 
 
 def _build_conn_str(server: str, database: str, user: str, password: str, driver_version: str) -> str:
