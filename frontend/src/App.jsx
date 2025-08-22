@@ -21,16 +21,16 @@ const API_BASE = "http://192.168.79.118:8000";
 
 
 const exampleData = {
-  nombre: "Nombre Apellido",
-  puesto: "Cargo Ejemplo",
-  departamento: "Departamento Ejemplo",
-  celular: "+54 9 11 XXXX-XXXX",
+  DisplayName: "Nombre Apellido",
+  Title: "Cargo Ejemplo",
+  Department: "Departamento Ejemplo",
+  PhoneNumber: "+54 9 11 XXXX-XXXX",
 };
 
 function renderTemplate(template, data) {
   let html = template;
-  for (const key of ["nombre", "puesto", "departamento", "celular"]) {
-    html = html.replaceAll(`{{${key}}}`, data[key] || "");
+  for (const key of ["DisplayName", "Title", "Department", "PhoneNumber"]) {
+    html = html.replaceAll(`%%${key}%%`, data[key] || "");
   }
   return html;
 }
