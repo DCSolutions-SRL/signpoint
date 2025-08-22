@@ -1,1 +1,0 @@
-Estas plantillas son predefinidas (solo lectura desde la API). Para modificarlas, crea una plantilla de usuario con el mismo nombre desde el frontend (la API la guardará en templates/user) o activa la opción de sobrescribir (guardado como user).

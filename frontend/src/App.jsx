@@ -244,6 +244,7 @@ export default function App() {
               </h2>
               <p>Administrador de firmas de correo.</p>
               <p>Desarrollado por <a href="https://www.dcs.ar" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)" }}>DCSolutions SRL</a>.</p>
+              <p style={{ fontSize: 15, color: '#000000', margin: 0 }}>Versión 1.0.0</p>
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
                 <AnimatedButton variant="outline" onClick={() => setShowAbout(false)}>Cerrar</AnimatedButton>
               </div>
@@ -339,11 +340,21 @@ export default function App() {
                 {templates.length === 0 && (
                   <option value="" disabled>(no hay plantillas)</option>
                 )}
-                {templates.map(t => (
-                  <option key={`${t.kind}:${t.name}`} value={t.name}>
-                    {t.kind === 'builtin' ? `⭐ ${t.name}` : t.name}
-                  </option>
-                ))}
+                {/* Mostrar solo una vez cada plantilla, priorizando la destacada (kind: 'builtin') */}
+                {(() => {
+                  const unique = new Map();
+                  for (const t of templates) {
+                    // Si ya existe, solo reemplazar si la nueva es 'builtin'
+                    if (!unique.has(t.name) || t.kind === 'builtin') {
+                      unique.set(t.name, t);
+                    }
+                  }
+                  return Array.from(unique.values()).map(t => (
+                    <option key={`${t.kind}:${t.name}`} value={t.name}>
+                      {t.kind === 'builtin' ? `⭐ ${t.name}` : t.name}
+                    </option>
+                  ));
+                })()}
               </select>
             </div>
 
@@ -388,6 +399,7 @@ export default function App() {
                 Guardar Plantilla
               </AnimatedButton>
               )}
+
 
               {me.role === 'admin' && (
               <AnimatedButton variant="outline" onClick={async () => {

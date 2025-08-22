@@ -60,6 +60,7 @@ export function Login({ loginForm, setLoginForm, handleLogin }) {
             </h2>
             <p>Administrador de firmas de correo.</p>
             <p>Desarrollado por <a href="https://www.dcs.ar" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)" }}>DCSolutions SRL</a>.</p>
+            <p style={{ fontSize: 13, color: '#888', margin: 0 }}>Versión 1.0.0</p>
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
               <AnimatedButton variant="outline" onClick={() => setShowAbout(false)}>Cerrar</AnimatedButton>
             </div>

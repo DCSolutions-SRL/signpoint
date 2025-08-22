@@ -95,10 +95,6 @@
 }
 
 /* Contenido responsivo dentro de la vista previa */
-.preview-container img {
-  max-width: 100%;
-  height: auto;
-}
 
 .preview-container table {
   max-width: 100%;
@@ -171,11 +167,6 @@
 }
 
 /* Asegurar que las imágenes insertadas se vean y no desborden */
-.rich-editor-area img {
-  max-width: 100%;
-  height: auto;
-  display: inline-block;
-}
 
 .rich-upload-group {
   display: flex;
