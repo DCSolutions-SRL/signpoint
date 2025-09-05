@@ -317,9 +317,9 @@ export default function App() {
                 }}
               >
                 <option value="" disabled hidden>Elegir...</option>
-                <option value="firma matias">CityCenter</option>
-                <option value="firma martin">CityCenter Online</option>
-                <option value="firma_casino_hotel">CityCenter Hotel</option>
+                <option value="firma TEST">CityCenter</option>
+                <option value="firma TEST ONLINE">CityCenter Online</option>
+                <option value="firma TEST HOTEL">CityCenter Hotel</option>
               </select>
             </div>
 
