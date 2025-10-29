@@ -17,7 +17,20 @@ import spImg from "./assets/sp-img.png";
 
 // import { API_BASE } from "./config";
 
-const API_BASE = "http://localhost:8000";
+// Componentes/Hook nuevos
+import { AnimatedButton } from "./components/AnimatedButton";
+import { Card } from "./components/Card";
+import { useRevealOnScroll } from "./hooks/useRevealOnScroll";
+import { ConfirmModal } from "./components/ConfirmModal";
+import { UserAdmin } from "./components/UserAdmin";
+
+// Importá tu icono PNG (ruta relativa desde App.jsx)
+import spImg from "./assets/sp-img.png";
+
+// NOTA: Eliminamos el import de "./App.css" para evitar conflictos con el nuevo tema
+
+const API_BASE = "http://192.168.79.118:8000";
+
 
 const exampleData = {
   DisplayName: "Nombre Apellido",
