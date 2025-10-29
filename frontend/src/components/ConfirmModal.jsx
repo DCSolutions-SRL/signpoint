@@ -11,7 +11,7 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
     setMessage("");
     try {
       await onConfirm(); // Llamada al backend desde App.jsx
-      setMessage(`Plantilla cargada exitosamente en ${casino}`);
+      setMessage(`Plantilla cargada exitosamente`);
       setSuccess(true);
     } catch (err) {
       setMessage(`Error: ${err.message}`);
@@ -24,7 +24,7 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
   // Cierre automático tras éxito
   useEffect(() => {
     if (success) {
-      const t = setTimeout(() => onCancel?.(), 1500);
+      const t = setTimeout(() => onCancel?.(), 2500);
       return () => clearTimeout(t);
     }
   }, [success, onCancel]);
@@ -82,13 +82,13 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
             justifyContent: "flex-end",
           }}
         >
-          <AnimatedButton
+         {!loading && <AnimatedButton
             variant="outline"
             onClick={onCancel}
             disabled={loading}
           >
             Cancelar
-          </AnimatedButton>
+          </AnimatedButton>}
           <AnimatedButton onClick={handleConfirm} loading={loading} disabled={loading}>
             Confirmar
           </AnimatedButton>

@@ -108,50 +108,6 @@ export default function App() {
     setPreview(renderTemplate(newHtml, exampleData));
   };
 
-  // Cargar listado de plantillas desde backend
-  useEffect(() => {
-    if (!token) return;
-    axios
-      .get(`${API_BASE}/templates`)
-      .then((r) => setTemplates(r.data || []))
-      .catch((e) => {
-        console.error(
-          "Error obteniendo plantillas:",
-          e?.response?.status,
-          e?.message
-        );
-        setTemplates([]);
-      });
-  }, [token]);
-
-  const loadTemplateByName = async (name) => {
-    if (!name) return;
-    try {
-      const r = await axios.get(
-        `${API_BASE}/templates/${encodeURIComponent(name)}`
-      );
-      const html = r.data?.template || "";
-      setTemplate(html);
-      setPreview(renderTemplate(html, exampleData));
-      setUserUploadedHtml(false);
-    } catch (e) {
-      alert("No se pudo cargar la plantilla seleccionada");
-    }
-  };
-
-  const resetToTemplates = () => setUserUploadedHtml(false);
-
-  // Guardar plantilla en backend
-  const saveTemplate = async () => {
-    try {
-      await axios.post(`${API_BASE}/signature/template`, { template });
-      alert("Plantilla guardada!");
-    } catch (error) {
-      console.error("Error al guardar plantilla:", error);
-      alert("Error al guardar plantilla");
-    }
-  };
-
   const downloadHtml = () => {
     const blob = new Blob([preview], { type: "text/html" });
     const url = URL.createObjectURL(blob);
@@ -169,12 +125,9 @@ export default function App() {
     if (applyMode === "user" && !mail) return;
 
     try {
-      const url =
-        applyMode === "user"
-          ? `${API_BASE}/signature/user/${encodeURIComponent(mail)}`
-          : `${API_BASE}/signature/all`; // nuevo endpoint si aplica a todos
+      const url = `${API_BASE}/signature/user/${encodeURIComponent(mail)}`
       const res = await axios.get(url);
-      const sig = res.data?.signature || "<p>Error: Firma no disponible</p>";
+      const sig = res.data?.signature || "<p>Error: Firma no disponible o el usuario no la tiene asignada</p>";
       setTemplate(sig); // directamente sobre el editor
       setUserUploadedHtml(false);
     } catch (err) {
@@ -183,26 +136,47 @@ export default function App() {
     }
   };
 
-  // confirmApply adaptado
-  const confirmApply = async () => {
-    try {
-      // Guardar plantilla primero
-      await axios.post(`${API_BASE}/signature/template`, { template });
+  // confirmApply para gmail
+const confirmApply = async () => {
+  try {
+    if (applyMode === "all") {
+      const { data: usersSignatures } = await axios.get(
+        `${API_BASE}/signature/users/all`
+      );
 
-      // Aplicar firma
-      const url =
-        applyMode === "user"
-          ? `${API_BASE}/signature/apply`
-          : `${API_BASE}/signature/apply/all`;
-      const body = applyMode === "user" ? { email: mail } : {};
-      const res = await axios.post(url, body);
-      if (res.status === 200) alert("Firma aplicada correctamente");
-      else throw new Error("Error aplicando firma");
-    } catch (err) {
-      console.error(err);
-      alert(err.message || "Error aplicando firma");
+      for (const email of Object.keys(usersSignatures)) {
+        await axios.post(`${API_BASE}/signature/update`, {
+          email,
+          signature: template, 
+        });
+      }
+
+      alert("Firma aplicada a todos los usuarios correctamente");
+      return; 
     }
-  };
+
+    if (applyMode === "user") {
+      if (!mail) {
+        alert("Debe ingresar un email");
+        return;
+      }
+
+      const res = await axios.post(`${API_BASE}/signature/update`, {
+        email: mail,
+        signature: template,
+      });
+
+      if (res.status === 200) {
+        alert("Firma aplicada correctamente al usuario");
+      } else {
+        throw new Error("Error aplicando firma al usuario");
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    alert(err.message || "Error aplicando firma");
+  }
+};
 
   if (!token) {
     // Pantalla de login con estética del sitio
@@ -475,50 +449,8 @@ export default function App() {
                 onCancel={() => setShowConfirm(false)}
                 onConfirm={confirmApply}
               />
-            )}
+            )}            
 
-            {/* Vista previa en tiempo real */}
-            <section
-              ref={refLivePreview}
-              className="reveal"
-              style={{ marginTop: 18 }}
-            >
-              <Card title="Vista previa en tiempo real">
-                <Preview html={preview} />
-              </Card>
-            </section>
-
-            {/* Vista previa para usuario real (oculta por no uso) */}
-            {false && (
-              <section
-                ref={refUserPreview}
-                className="reveal"
-                style={{ marginTop: 18 }}
-              >
-                <Card title="Vista previa para usuario real">
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 12,
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <input
-                      type="email"
-                      className="input"
-                      placeholder="email del usuario"
-                      value={mail}
-                      onChange={(e) => setMail(e.target.value)}
-                      style={{ minWidth: 260, flex: "1 1 260px" }}
-                    />
-                    <AnimatedButton onClick={getSignature}>
-                      Generar Firma
-                    </AnimatedButton>
-                  </div>
-                </Card>
-              </section>
-            )}
           </>
         )}
       </main>
