@@ -38,13 +38,20 @@ app.add_middleware(
 
 
 SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE", "service_account.json")
-SCOPES = ["https://www.googleapis.com/auth/gmail.settings.basic"]
-
+SCOPES = ["https://www.googleapis.com/auth/admin.directory.user.readonly",
+          "https://www.googleapis.com/auth/gmail.settings.basic"
+        ]
 
 credentials = service_account.Credentials.from_service_account_file(
     SERVICE_ACCOUNT_FILE,
     scopes=SCOPES
 )
+
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
+
+excluded_users = os.getenv("EXCLUDED_EMAILS", "")
+excluded_users_list = [e.strip() for e in excluded_users.split(",") if e.strip()]
+
 
 @app.get("/signature/user/{email}")
 def get_signature(email: str):
@@ -82,6 +89,39 @@ def update_signature(data: SignatureUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/signature/users/all") 
+def getAllUsers():
+    try:
+         # Delegamos credenciales al admin para leer todos los usuarios
+        delegated_creds = credentials.with_subject(ADMIN_EMAIL)
+        service = build("admin", "directory_v1", credentials=delegated_creds)
+        
+        # Traemos todos los usuarios del dominio
+        results = service.users().list(domain="dcs.ar", maxResults=500).execute()
+        users = results.get("users", [])
+
+        signatures = {}
+        
+        for u in users:
+            email = u["primaryEmail"]
+            if email in excluded_users_list:
+                continue
+            try:
+                # Impersonar cada usuario para obtener la firma de Gmail
+                delegated = credentials.with_subject(email)
+                gmail_service = build("gmail", "v1", credentials=delegated)
+                send_as = gmail_service.users().settings().sendAs().get(
+                    userId=email, sendAsEmail=email
+                ).execute()
+                signatures[email] = send_as.get("signature", "")
+            except Exception as e:
+                signatures[email] = ""
+                print(f"Error obteniendo firma de {email}: {e}")
+
+        return signatures
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 class TemplateBody(BaseModel):
     template: str

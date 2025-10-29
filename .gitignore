@@ -3,3 +3,4 @@ venv/
 backend/src/__pycache__
 backend/src/nohup.out
 __pycache__/*
+backend/src/tokenGmail.json

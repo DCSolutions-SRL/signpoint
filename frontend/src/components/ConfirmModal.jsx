@@ -11,7 +11,7 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
     setMessage("");
     try {
       await onConfirm(); // Llamada al backend desde App.jsx
-      setMessage(`Plantilla cargada exitosamente en ${casino}`);
+      setMessage(`Plantilla cargada exitosamente`);
       setSuccess(true);
     } catch (err) {
       setMessage(`Error: ${err.message}`);
@@ -24,7 +24,7 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
   // Cierre automático tras éxito
   useEffect(() => {
     if (success) {
-      const t = setTimeout(() => onCancel?.(), 1500);
+      const t = setTimeout(() => onCancel?.(), 2500);
       return () => clearTimeout(t);
     }
   }, [success, onCancel]);
@@ -59,7 +59,7 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
           ¿Seguro que quieres aplicar la firma al casino <b>{casino}</b>?
         </p>
         <p style={{ marginTop: 12, color: "red", fontWeight: "bold" }}>
-          IMPORTANTE: esto alterará la firma de todos los usuarios del grupo.
+          IMPORTANTE: esto alterará la firma de todos usuarios o el usuario elegido.
         </p>
 
         {loading && (
@@ -82,13 +82,13 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
             justifyContent: "flex-end",
           }}
         >
-          <AnimatedButton
+         {!loading && <AnimatedButton
             variant="outline"
             onClick={onCancel}
             disabled={loading}
           >
             Cancelar
-          </AnimatedButton>
+          </AnimatedButton>}
           <AnimatedButton onClick={handleConfirm} loading={loading} disabled={loading}>
             Confirmar
           </AnimatedButton>
