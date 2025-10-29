@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
+
 from db import check_connection, connect_with_credentials, connect_default
 
 app = FastAPI()
@@ -437,6 +438,7 @@ def api_delete_template(name: str, user: str):
         raise HTTPException(status_code=400, detail="No se puede eliminar una plantilla predefinida")
     delete_user_template(name)
     return {"status": "deleted", "name": name}
+
 
 
 
