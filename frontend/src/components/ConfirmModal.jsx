@@ -59,7 +59,7 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
           ¿Seguro que quieres aplicar la firma al casino <b>{casino}</b>?
         </p>
         <p style={{ marginTop: 12, color: "red", fontWeight: "bold" }}>
-          IMPORTANTE: esto alterará la firma de todos los usuarios del grupo.
+          IMPORTANTE: esto alterará la firma de todos usuarios o el usuario elegido.
         </p>
 
         {loading && (

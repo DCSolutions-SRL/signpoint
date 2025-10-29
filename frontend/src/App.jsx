@@ -150,8 +150,6 @@ const confirmApply = async () => {
           signature: template, 
         });
       }
-
-      alert("Firma aplicada a todos los usuarios correctamente");
       return; 
     }
 
@@ -166,9 +164,7 @@ const confirmApply = async () => {
         signature: template,
       });
 
-      if (res.status === 200) {
-        alert("Firma aplicada correctamente al usuario");
-      } else {
+      if (res.status !== 200) {
         throw new Error("Error aplicando firma al usuario");
       }
     }
