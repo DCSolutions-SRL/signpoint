@@ -48,13 +48,10 @@ export default function App() {
   const [mail, setMail] = useState("");
   const [preview, setPreview] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
-  const [selectedCasino, setSelectedCasino] = useState("");
   const [selectedCasinoLabel, setSelectedCasinoLabel] = useState("");
   const [userUploadedHtml, setUserUploadedHtml] = useState(false);
-  const [templates, setTemplates] = useState([]); // {name, kind}
-  const [selectedTemplateName, setSelectedTemplateName] = useState("");
   // Nuevo estado para modo
-  const [applyMode, setApplyMode] = useState("user"); // "user" | "all"
+  const [applyMode, setApplyMode] = useState("all"); // "user" | "all"
 
   // axios default auth header
   useEffect(() => {
@@ -371,22 +368,23 @@ const confirmApply = async () => {
                     <input
                       type="radio"
                       name="applyMode"
-                      value="user"
-                      checked={applyMode === "user"}
-                      onChange={() => setApplyMode("user")}
-                    />{" "}
-                    Usuario individual
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="applyMode"
                       value="all"
                       checked={applyMode === "all"}
                       onChange={() => setApplyMode("all")}
                     />{" "}
                     Todos los usuarios
                   </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="applyMode"
+                      value="user"
+                      checked={applyMode === "user"}
+                      onChange={() => setApplyMode("user")}
+                    />{" "}
+                    Usuario individual
+                  </label>
+                  
                 </div>
 
                 {/* Input de mail solo si applyMode es 'user' */}

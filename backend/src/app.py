@@ -122,6 +122,34 @@ def getAllUsers():
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+    
+@app.get("/signature/users/all/data")
+def get_all_users_data():
+    delegated = credentials.with_subject(ADMIN_EMAIL)
+    service = build("admin", "directory_v1", credentials=delegated)
+
+    results = service.users().list(customer="my_customer").execute()
+    users = results.get("users", [])
+
+    user_data = {}
+
+    for u in users:
+        email = u["primaryEmail"]
+        # if email in excluded_users_list:
+        #     continue
+
+        info = {
+            "name": u.get("name", {}).get("fullName", ""),
+            "title": u.get("organizations", [{}])[0].get("title", ""),
+            "department": u.get("organizations", [{}])[0].get("department", ""),
+            "phone": u.get("phones", [{}])[0].get("value", ""),
+        }
+
+        user_data[email] = info
+
+    return user_data
+
 
 class TemplateBody(BaseModel):
     template: str
