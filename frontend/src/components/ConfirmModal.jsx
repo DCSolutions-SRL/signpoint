@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { AnimatedButton } from "./AnimatedButton";
 
-export function ConfirmModal({ casino, onCancel, onConfirm }) {
+export function ConfirmModal({ mode, onCancel, onConfirm, user = "" }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
@@ -56,7 +56,8 @@ export function ConfirmModal({ casino, onCancel, onConfirm }) {
       >
         <h2>Confirmar aplicación</h2>
         <p>
-          ¿Seguro que quieres aplicar la firma al casino <b>{casino}</b>?
+          ¿Seguro que quieres aplicar la firma{" "}
+          {mode === "user" ? `al usuario ${user}` : "a todos los usuarios"}?
         </p>
         <p style={{ marginTop: 12, color: "red", fontWeight: "bold" }}>
           IMPORTANTE: esto alterará la firma de todos usuarios o el usuario elegido.

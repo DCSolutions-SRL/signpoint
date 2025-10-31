@@ -11,7 +11,7 @@
         "files": "*.jsx",
         "options": {
         "singleQuote": true,
-        "semi": true
+        "semi": false
         }
     }
   ]
