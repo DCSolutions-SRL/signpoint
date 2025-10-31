@@ -71,23 +71,33 @@ class SignatureUpdate(BaseModel):
 
 @app.post("/signature/update")
 def update_signature(data: SignatureUpdate):
-    try:
-        delegated_creds = credentials.with_subject(data.email)
-        service = build("gmail", "v1", credentials=delegated_creds)
-        send_as = service.users().settings().sendAs().get(userId=data.email, sendAsEmail=data.email).execute()
-        send_as['signature'] = data.signature
-        service.users().settings().sendAs().patch(
-            userId=data.email, 
-            sendAsEmail=data.email, 
-            body={"signature": data.signature,
-                  "replyToAddress": data.email,
-                  "isDefault": True,
-                  "treatAsAlias": True
-                 }
-        ).execute()
-        return {"success": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # Construir la firma final
+    signature_final = build_user_signature(data.email, data.signature)
+    
+    # Aplicar la firma vía Gmail API
+    delegated_creds = credentials.with_subject(data.email)
+    service = build("gmail", "v1", credentials=delegated_creds)
+    
+    send_as = service.users().settings().sendAs().get(
+        userId=data.email, sendAsEmail=data.email
+    ).execute()
+    
+    send_as['signature'] = signature_final
+    
+    service.users().settings().sendAs().patch(
+        userId=data.email,
+        sendAsEmail=data.email,
+        body={
+            "signature": signature_final,
+            "replyToAddress": data.email,
+            "isDefault": True,
+            "treatAsAlias": True
+        }
+    ).execute()
+    
+    return {"success": True}
+
+
 
 @app.get("/signature/users/all") 
 def getAllUsers():
@@ -101,6 +111,8 @@ def getAllUsers():
         users = results.get("users", [])
 
         signatures = {}
+        
+        
         
         for u in users:
             email = u["primaryEmail"]
@@ -123,7 +135,71 @@ def getAllUsers():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
+
+def build_user_signature(email: str, template: str) -> str:
+    """
+    Devuelve el HTML final de la firma de un usuario reemplazando
+    los placeholders por los datos reales del Directory de Google.
+    """
+    if not email.strip():
+        raise HTTPException(status_code=400, detail="No se proporcionó un mail")
     
+    # 1. Obtener info real del usuario
+    user_info = get_user_info(email)
+    
+    # 2. Parsear template
+    signature_final = parse_signature(template, user_info)
+    
+    return signature_final
+
+def get_user_info(email: str):
+    """Devuelve info de usuario desde Directory API"""
+    try:
+        delegated = credentials.with_subject(ADMIN_EMAIL)
+        service = build("admin", "directory_v1", credentials=delegated)
+        user = service.users().get(userKey=email).execute()
+
+        name = user.get("name", {}).get("fullName", "") or ""
+        givenName = user.get("name", {}).get("givenName", "") or ""
+        familyName = user.get("name", {}).get("familyName", "") or ""
+        orgs = user.get("organizations") or []
+        title = orgs[0].get("title", "") if len(orgs) > 0 else ""
+        department = orgs[0].get("department", "") if len(orgs) > 0 else ""
+        phones = user.get("phones") or []
+        phone = phones[0].get("value", "") if len(phones) > 0 else ""
+
+        return {
+            "name": name,
+            "givenName": givenName,
+            "familyName": familyName,
+            "title": title,
+            "department": department,
+            "phone": phone
+        }
+
+    except Exception as e:
+        print("Error en get_user_info para", email, ":", repr(e))
+        return {
+            "name": "",
+            "givenName": "",
+            "familyName": "",
+            "title": "",
+            "department": "",
+            "phone": ""
+        }
+
+def parse_signature(template: str, user_data: dict) -> str:
+    """
+    Reemplaza placeholders %%name%%, %%title%%, %%department%%, %%phone%% por
+    los datos del usuario.
+    """
+    result = template
+    for key, value in user_data.items():
+        placeholder = f"%%{key}%%"
+        result = result.replace(placeholder, value or "")
+    return result
+
+
 @app.get("/signature/users/all/data")
 def get_all_users_data():
     delegated = credentials.with_subject(ADMIN_EMAIL)
@@ -516,15 +592,4 @@ def list_users(user: str):
     token = get_access_token()
     users = get_all_users(token)
     return users
-
-
-
-# ====== Aplicar firma en Exchange Online (PowerShell) ======
-# Variables de entorno requeridas para conexión por certificado
-APP_ID = os.getenv("APP_ID")
-CERT_PASSWORD = os.getenv("CERT_PASSWORD")
-# Aceptar tanto ORGANIZATION (correcto) como ORGANIZARTION (legacy/typo)
-ORGANIZATION = os.getenv("ORGANIZATION") or os.getenv("ORGANIZARTION")
-CERT_ROUTE = os.getenv("CERT_ROUTE")
-
 

@@ -48,7 +48,6 @@ export default function App() {
   const [mail, setMail] = useState("");
   const [preview, setPreview] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
-  const [selectedCasinoLabel, setSelectedCasinoLabel] = useState("");
   const [userUploadedHtml, setUserUploadedHtml] = useState(false);
   // Nuevo estado para modo
   const [applyMode, setApplyMode] = useState("all"); // "user" | "all"
@@ -426,7 +425,10 @@ const confirmApply = async () => {
                     flexWrap: "wrap",
                   }}
                 >
-                  <AnimatedButton onClick={() => setShowConfirm(true)}>
+                  <AnimatedButton onClick={() => { if (mail || applyMode === "all") 
+                                                        setShowConfirm(true)
+                                                  else alert("No se proporciono un mail")
+                                                  }}>
                     Aplicar Firma {applyMode === "all" ? "a todos" : ""}
                   </AnimatedButton>
                   <AnimatedButton onClick={downloadHtml}>
@@ -439,7 +441,8 @@ const confirmApply = async () => {
 
             {showConfirm && (
               <ConfirmModal
-                casino={selectedCasinoLabel}
+                mode={applyMode}
+                user={mail}
                 onCancel={() => setShowConfirm(false)}
                 onConfirm={confirmApply}
               />
