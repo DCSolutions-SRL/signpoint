@@ -13,6 +13,8 @@ from jose import jwt, JWTError
 from dotenv import load_dotenv
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+import base64
 
 
 from db import check_connection, connect_with_credentials, connect_default
@@ -25,7 +27,7 @@ load_dotenv()
 # CORS: permitir localhost y la IP LAN usada por Vite; configurable por env CORS_ALLOW_ORIGINS (lista separada por comas)
 _cors_origins = os.getenv(
     "CORS_ALLOW_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173,http://192.168.79.118:5173",
+    "http://localhost:5173,http://127.0.0.1:5173,http://192.168.79.149:5173",
 
 ).split(",")
 app.add_middleware(
@@ -166,15 +168,24 @@ def get_user_info(email: str):
         title = orgs[0].get("title", "") if len(orgs) > 0 else ""
         department = orgs[0].get("department", "") if len(orgs) > 0 else ""
         phones = user.get("phones") or []
-        phone = phones[0].get("value", "") if len(phones) > 0 else ""
-
+        phone = next((p.get("value") for p in phones if p.get("type") == "mobile"), "").replace("´", "").strip()
+        oficePhone = next((p.get("value") for p in phones if p.get("type") == "work"), "").replace("´", "").strip()
+        mail = user.get("primaryEmail", "")
+        profile_photo_url = user.get("thumbnailPhotoUrl", "")
+        logo = "https://www.dcs.ar/wp-content/uploads/elementor/thumbs/cropped-Logo-DCS-dc-solutions-empresa-de-tecnologia-infraestructura-soluciones-tecnologicas-q0f8d0mqgzuw96nmamxs4r9vnrpxwivl1f6c1vkah0.png"
+        address = next((a.get("formatted") for a in (user.get("addresses") or []) if a.get("type") == "work"), "")
         return {
             "name": name,
             "givenName": givenName,
             "familyName": familyName,
             "title": title,
             "department": department,
-            "phone": phone
+            "phone": phone,
+            "oficePhone": oficePhone,
+            "mail": mail,
+            "profilePhoto": profile_photo_url,
+            "companyLogo": logo,
+            "address": address
         }
 
     except Exception as e:
@@ -195,6 +206,11 @@ def parse_signature(template: str, user_data: dict) -> str:
     """
     result = template
     for key, value in user_data.items():
+        if key == "profilePhoto" or key == "companyLogo":
+            placeholder = key
+            result = result.replace(placeholder, value or "")
+            continue
+            
         placeholder = f"%%{key}%%"
         result = result.replace(placeholder, value or "")
     return result

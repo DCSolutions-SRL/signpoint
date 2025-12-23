@@ -5,3 +5,5 @@ backend/src/nohup.out
 __pycache__/*
 backend/src/tokenGmail.json
 .vscode/
+build/
+*.exe
