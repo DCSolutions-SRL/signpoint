@@ -392,15 +392,30 @@ def require_admin(username: str):
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-
+def get_current_user(authorization: Optional[str] = Header(None)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Falta token")
+    try:
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not token:
+            raise HTTPException(status_code=401, detail="Token inválido")
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        sub = payload.get("sub")
+        if not sub:
+            raise HTTPException(status_code=401, detail="Token inválido")
+        return sub
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token inválido")
+    
+    
 @app.get("/auth/me", response_model=MeResponse)
-def me(user: str):
+def me(user: str = Depends(get_current_user)):
     role = get_user_role_from_db(user) or "none"
     return MeResponse(user=user, role=role)  # type: ignore[arg-type]
 
 
 @app.get("/app-users", response_model=List[AppUser])
-def list_app_users(user: str):
+def list_app_users(user: str = Depends(get_current_user)):
     require_admin(user)
     ensure_app_users_table()
     conn = connect_default()
@@ -414,7 +429,7 @@ def list_app_users(user: str):
 
 
 @app.post("/app-users", response_model=AppUser)
-def upsert_app_user(app_user: AppUser, user: str):
+def upsert_app_user(app_user: AppUser, user: str = Depends(get_current_user)):
     require_admin(user)
     # Validar username básico (emails o nombres con @._- permitidos)
     if not re.fullmatch(r"[\w.@\-]{3,128}", app_user.username):
@@ -444,7 +459,7 @@ def upsert_app_user(app_user: AppUser, user: str):
 
 
 @app.delete("/app-users/{username}")
-def delete_app_user(username: str, user: str):
+def delete_app_user(username: str, user: str = Depends(get_current_user)):
     require_admin(user)
     if username.lower() == "signpoint":
         raise HTTPException(status_code=400, detail="No se puede eliminar 'signpoint'")
@@ -462,34 +477,51 @@ def delete_app_user(username: str, user: str):
 
 
 @app.post("/app-users/{username}/password")
-def set_app_user_password(username: str, body: PasswordBody, user: str):
+def set_app_user_password(username: str, body: PasswordBody, user: str = Depends(get_current_user)):
     require_admin(user)
+    
+    # Validaciones previas
     if username.lower() == "signpoint":
         raise HTTPException(status_code=400, detail="No se puede cambiar contraseña de 'signpoint'")
+    
     if not body.password or len(body.password) < 6:
         raise HTTPException(status_code=400, detail="Contraseña demasiado corta (mínimo 6)")
+    
     ensure_app_users_table()
     pwd_hash = pwd_context.hash(body.password)
+    
     conn = connect_default()
     try:
         cur = conn.cursor()
-        # Asegurar fila existente; si no, crear como user por defecto
-        cur.execute(
-            """
-            IF NOT EXISTS (SELECT 1 FROM app_users WHERE username = ?)
-                INSERT INTO app_users (username, role, password_hash, created_by)
-                VALUES (?, 'user', ?, ?);
-            ELSE
-                UPDATE app_users SET password_hash = ?, created_by = ? WHERE username = ?;
-            """,
-            (
-                username,  # not exists check
-                username, pwd_hash, user,  # insert
-                pwd_hash, user, username,  # update
-            ),
-        )
+        
+        # 1. Verificar si el usuario ya existe
+        # Nota: Usamos SELECT 1 para ser eficientes
+        cur.execute("SELECT 1 FROM app_users WHERE username = ?", (username,))
+        row = cur.fetchone()
+        
+        if row:
+            # 2. Si existe -> UPDATE
+            cur.execute(
+                "UPDATE app_users SET password_hash = ?, created_by = ? WHERE username = ?",
+                (pwd_hash, user, username)
+            )
+        else:
+            # 3. Si no existe -> INSERT
+            cur.execute(
+                "INSERT INTO app_users (username, role, password_hash, created_by) VALUES (?, 'user', ?, ?)",
+                (username, pwd_hash, user)
+            )
+            
         conn.commit()
         return {"status": "password_set", "username": username}
+        
+    except Exception as e:
+        # IMPORTANTE: Imprimir el error real en la consola del servidor para poder depurar
+        print(f"Error en set_app_user_password: {e}")
+        # Hacemos rollback por seguridad
+        conn.rollback() 
+        raise HTTPException(status_code=500, detail=f"Error de base de datos: {str(e)}")
+        
     finally:
         conn.close()
 
@@ -522,20 +554,7 @@ def _verify_app_user_password(username: str, password: str) -> bool:
 
 
 
-def get_current_user(authorization: Optional[str] = Header(None)):
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Falta token")
-    try:
-        scheme, _, token = authorization.partition(" ")
-        if scheme.lower() != "bearer" or not token:
-            raise HTTPException(status_code=401, detail="Token inválido")
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        sub = payload.get("sub")
-        if not sub:
-            raise HTTPException(status_code=401, detail="Token inválido")
-        return sub
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token inválido")
+
 
 
 @app.post("/auth/login", response_model=TokenResponse)

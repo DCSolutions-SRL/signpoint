@@ -78,7 +78,19 @@ export default function App() {
         setToken(tok);
       }
     } catch (err) {
-      alert("Login inválido o DB inaccesible");
+      switch (err.response.status) {
+      case 401:
+        alert("Usuario o contraseña inválidos");
+        break;
+      case 403:
+        alert("No tiene permisos para acceder");
+        break;
+      case 500:
+        alert("Error interno del servidor (DB inaccesible o fallo interno)");
+        break;
+      default:
+        alert(`Error inesperado: ${err.response.status} ${err.response.statusText}`);
+      }
     }
   };
 
