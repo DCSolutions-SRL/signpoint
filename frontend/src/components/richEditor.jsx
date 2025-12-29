@@ -212,8 +212,11 @@ export default function RichEditor({ initialHtml, onChange }) {
   };
 
   const loadHtmlFile = (event) => {
+
     const file = event.target.files[0];
-    if (!file || !file.name.endsWith(".htm") && !file.name.endsWith(".html")) {
+    
+    if (!file) return;
+    if (!file.name.endsWith(".htm") && !file.name.endsWith(".html")) {
       alert("Por favor selecciona un archivo .htm o .html válido.");
       return;
     }
@@ -221,15 +224,19 @@ export default function RichEditor({ initialHtml, onChange }) {
     const reader = new FileReader();
     reader.onload = (e) => {
       if (editorRef.current) {
-        editorRef.current.innerHTML = e.target.result;
+        const content = e.target.result;
+        editorRef.current.innerHTML = content;
+        
         if (onChange) {
-          onChange(editorRef.current.innerHTML, { userUpload: true });
+          onChange(content, { userUpload: true });
         } else {
           updateHtml();
         }
       }
     };
     reader.readAsText(file);
+
+    event.target.value = null;
   };
 
   return (
@@ -277,7 +284,7 @@ export default function RichEditor({ initialHtml, onChange }) {
         {/* Cargar archivo HTML */}
         <label className="rich-btn" style={{ marginLeft: "10px" }}>
           Cargar HTML
-          <input type="file" style={{ display: "none" }} accept=".htm,.html" onChange={loadHtmlFile} />
+          <input type="file" style={{ display: "none" }} accept=".htm,.html" onClick={(e) => (e.target.value = null)} onChange={loadHtmlFile} />
         </label>
       </div>
 
