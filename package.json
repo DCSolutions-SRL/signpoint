@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@elastic/apm-rum": "^5.17.0"
+  }
+}

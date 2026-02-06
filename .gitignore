@@ -7,3 +7,17 @@ backend/src/tokenGmail.json
 .vscode/
 build/
 *.exe
+backend-dotnet/
+node_modules/
+dist/
+*.log
+*.bak
+*.tmp
+*.swp
+.DS_Store
+.idea/
+*.iml
+*.sln
+*.csproj
+*.user
+*.suo

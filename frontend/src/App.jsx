@@ -137,6 +137,7 @@ export default function App() {
       const res = await axios.get(url);
       const sig = res.data?.signature || "<p>Error: Firma no disponible o el usuario no la tiene asignada</p>";
       setTemplate(sig); // directamente sobre el editor
+      setPreview(renderTemplate(sig, exampleData)); // actualizar preview para descarga
       setUserUploadedHtml(false);
     } catch (err) {
       console.error(err);
